@@ -4,6 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My Ear Trainer</title>
+<meta name="description" content="Train your ear in the browser. Hear two tones and say which sat higher — down to a few cents — or name the interval from the tonic. Free, no signup.">
+<link rel="canonical" href="https://myeartrainer.com/">
+<meta name="theme-color" content="#23261F">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="My Ear Trainer">
+<meta property="og:url" content="https://myeartrainer.com/">
+<meta property="og:title" content="My Ear Trainer — pitch and interval ear training">
+<meta property="og:description" content="Hear two tones and say which sat higher — down to a few cents — or name the interval from the tonic. Free, runs in the browser, no signup.">
+<meta property="og:image" content="https://myeartrainer.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="My Ear Trainer — pitch discrimination and interval training, in the browser">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="My Ear Trainer — pitch and interval ear training">
+<meta name="twitter:description" content="Hear two tones and say which sat higher — down to a few cents — or name the interval from the tonic. Free, runs in the browser, no signup.">
+<meta name="twitter:image" content="https://myeartrainer.com/og-image.png">
+
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -313,6 +331,23 @@
   .dual-thumb:focus-visible{outline:2px solid var(--signal);outline-offset:2px;}
   .slider-val{font-family:'Space Mono',monospace;font-size:12px;color:var(--graphite);}
   .note{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:14px;}
+  .wordmark{
+    font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;
+    letter-spacing:.24em;font-size:13px;font-weight:700;color:var(--ink);
+    margin:0 0 14px;display:flex;align-items:center;gap:10px;
+  }
+  .wordmark::after{content:'';flex:1;height:1px;background:var(--rule);}
+  .prose{margin-top:14px;}
+  .prose h2{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;
+    letter-spacing:.2em;font-size:12px;font-weight:700;color:var(--graphite);margin:0 0 7px;}
+  .prose p{font-size:14px;line-height:1.62;color:var(--graphite);margin:0 0 13px;}
+  .prose p:last-child{margin-bottom:0;}
+  .prose b{color:var(--ink);font-weight:600;}
+  .prose a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--signal);
+    text-underline-offset:2px;}
+  .prose a:hover{color:var(--signal);}
+  .prose a:focus-visible{outline:2px solid var(--signal);outline-offset:2px;}
+  .prose > div + div{margin-top:18px;border-top:1px solid var(--rule);padding-top:16px;}
   /* sits on the case background, not the panel, so it needs its own colours */
   .credit{
     width:100%;max-width:540px;
@@ -331,6 +366,7 @@
 </head>
 <body>
 <main class="panel" id="panel">
+  <h1 class="wordmark">My Ear Trainer</h1>
   <div class="flash" id="flash"></div>
 
   <div class="tabs" role="tablist">
@@ -623,6 +659,40 @@
   <audio id="player" playsinline preload="auto"></audio>
   <audio id="fx" playsinline preload="auto"></audio>
 </main>
+
+<article class="panel prose">
+  <div>
+    <h2>What a cent is</h2>
+    <p>An octave divides into twelve semitones, and each semitone into a hundred <b>cents</b> — 1200 cents to the octave. A cent is far too small to hear as a musical step. It is the unit you reach for once the question stops being <i>which note is this</i> and becomes <i>are these two notes actually the same</i>. Guitar and bass intonation, string bends, choral tuning and the drift of a slightly flat open string all live at this scale.</p>
+    <p>The cent gap exercise plays two tones back to back and asks which sat higher — or whether they matched. Narrow the gap and the task gets harder in a way that is measurable rather than vague.</p>
+  </div>
+
+  <div>
+    <h2>How finely can you hear?</h2>
+    <p>Trained musicians can generally pick apart differences of only a few cents. Someone who has never trained the skill usually needs something closer to fifteen. Published estimates vary with the method used, but two things are consistent: the untrained threshold is much coarser than people expect, and it improves quickly — often noticeably within a few hours of focused practice.</p>
+    <p>That is the point of measuring it. Set a gap, run a round, and the accuracy chart shows where your own threshold currently sits instead of leaving you to guess.</p>
+  </div>
+
+  <div>
+    <h2>Why there are three answers</h2>
+    <p>Tone 1 higher, tone 2 higher, or the two were identical. Three answers means guessing scores <b>33%</b>, not 50, and every threshold in the app is judged against that floor rather than a coin flip.</p>
+    <p>Identical pairs are not padding. Without them you can score well by always hearing a difference, whether or not one is there — a real and common failure mode, and invisible in a single accuracy number. The round summary calls it out separately when it happens.</p>
+    <p>Aim to sit around <b>70–80%</b>. Much higher and the gap is too wide to be teaching you anything; near chance and there is no signal to learn from.</p>
+  </div>
+
+  <div>
+    <h2>Intervals and relative pitch</h2>
+    <p>The second exercise plays the tonic, then another note, and asks how far apart they were. This is <b>relative pitch</b>: not naming notes in absolute terms, but hearing the distance between them. It is the skill behind picking a line up by ear, transcribing, and knowing where your hand should go before you play.</p>
+    <p>The reference is always the tonic, so the key holds and the movable-do solfège syllables keep their meaning — <i>do, re, mi</i> stay attached to scale degrees rather than to fixed pitches. Start with a handful of intervals and add a neighbour once those are solid; a new interval is easiest to learn by contrast with one you already know.</p>
+    <p>A useful way in is to anchor each interval to a song that opens with it — the rising fifth of <i>Twinkle, Twinkle</i>, the tritone of the Simpsons theme. EarMaster publishes a free <a href="https://www.earmaster.com/products/free-tools/interval-song-chart-generator.html" target="_blank" rel="noopener">interval song chart generator</a> that lists well-known songs for each one, which is worth keeping open beside this while the shapes are still settling.</p>
+  </div>
+
+  <div>
+    <h2>Where the notes sit</h2>
+    <p>Trials are drawn from the piano's range, A0 to C8, and you set the span you want to work in. For reference: a four-string bass sounds E1 to about E♭3, a guitar E2 to E6. Both are written an octave above where they sound, which is why an open E on a bass reads as E2 on paper but arrives at your ear near 41 Hz.</p>
+    <p>Pitch discrimination is not uniform across that range, which is why accuracy is charted against the centre pitch of each pair as well as against the gap. Most people are noticeably worse at the extremes.</p>
+  </div>
+</article>
 
 <footer class="credit">
   <a href="https://www.flaticon.com/free-icons/ear" title="ear icons" target="_blank" rel="noopener">Ear icons created by Magnific &mdash; Flaticon</a>
@@ -2339,5 +2409,26 @@
 })();
 </script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "59e34e23d19244c89a99136d0550973c"}'></script><!-- End Cloudflare Web Analytics -->
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "My Ear Trainer",
+  "url": "https://myeartrainer.com/",
+  "description": "Ear training in the browser. Hear two tones and say which sat higher, down to a few cents, or name the interval from the tonic.",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Any",
+  "browserRequirements": "Requires JavaScript and Web Audio",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": [
+    "Cent-gap pitch discrimination training",
+    "Interval recognition from the tonic",
+    "Adjustable gap size, pitch range and interval set",
+    "Accuracy charts by gap, pitch and interval"
+  ]
+}
+</script>
 </body>
 </html>
