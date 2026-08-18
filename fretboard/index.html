@@ -351,6 +351,7 @@
 <script>
 (function(){
   'use strict';
+  var A=window.TrainerAudio;
   function el(id){return document.getElementById(id);}
   var SVGNS='http://www.w3.org/2000/svg';
 
@@ -1658,7 +1659,7 @@
     progress();
   });
   el('vol').addEventListener('input',function(){
-    state.vol=Number(this.value)/100;
+    state.vol=Number(this.value)/100; A.settings.vol=state.vol;
     el('volVal').textContent=this.value+'%';
   });
   el('resetBtn').addEventListener('click',function(){
