@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Fretboard Trainer</title>
+<meta name="description" content="Learn the notes on a bass or guitar fretboard. Name the note under a dot, or find a named note on the neck. Free, runs in the browser, no signup.">
+<link rel="canonical" href="https://myeartrainer.com/fretboard/">
+<meta name="theme-color" content="#23261F">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="My Ear Trainer">
+<meta property="og:url" content="https://myeartrainer.com/fretboard/">
+<meta property="og:title" content="My Fretboard Trainer — note names on bass and guitar">
+<meta property="og:description" content="Learn the notes on a bass or guitar fretboard. Name the note under a dot, or find a named note on the neck. Free, runs in the browser, no signup.">
+<meta property="og:image" content="https://myeartrainer.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="My Ear Trainer — pitch discrimination and interval training, in the browser">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="My Fretboard Trainer — note names on bass and guitar">
+<meta name="twitter:description" content="Learn the notes on a bass or guitar fretboard. Name the note under a dot, or find a named note on the neck. Free, runs in the browser, no signup.">
+<meta name="twitter:image" content="https://myeartrainer.com/og-image.png">
+
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="apple-touch-icon" href="../favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../app.css">
+<style>
+  /* fretboard-only tokens; the shared palette lives in app.css */
+  :root{
+    --board:#413024;
+    --board-deep:#33251B;
+    --board-hi:#4E3B2C;
+    --board-ink:#F0EBDD;
+    --fret:#B9BCB6;
+    --fret-deep:#8B8F88;
+    --fret-num:#7C8175;
+    --inlay:#E8E4D4;
+    --nut:#E4E0D2;
+    --string:#C7C0AE;
+    --warn:#9A6B12;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --board:#2B1F17;
+      --board-deep:#1F1610;
+      --board-hi:#372820;
+      --board-ink:#EFE9DB;
+      --fret:#8E938F;
+      --fret-deep:#5E625E;
+      --fret-num:#8E9089;
+      --inlay:#CFCABA;
+      --nut:#C8C3B4;
+      --string:#A49D8D;
+      --warn:#E0A93F;
+    }
+  }
+  :root[data-theme="dark"]{
+    --board:#2B1F17;
+    --board-deep:#1F1610;
+    --board-hi:#372820;
+    --board-ink:#EFE9DB;
+    --fret:#8E938F;
+    --fret-deep:#5E625E;
+    --fret-num:#8E9089;
+    --inlay:#CFCABA;
+    --nut:#C8C3B4;
+    --string:#A49D8D;
+    --warn:#E0A93F;
+  }
+
+  .sec-head{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.2em;font-size:12px;font-weight:700;margin:10px 0 3px;}
+
+  .readout{display:flex;align-items:baseline;gap:10px;min-height:56px;}
+  .readout .num{font-family:'Space Mono',monospace;font-weight:700;font-size:clamp(40px,13vw,58px);line-height:.9;letter-spacing:-.03em;}
+  .readout-cap{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.2em;font-size:11px;font-weight:600;color:var(--muted);margin:0 0 8px;min-height:14px;}
+  .readout .num.ok{color:var(--correct);}
+  .readout .num.no{color:var(--signal);}
+
+  /* ---- the fingerboard ---- */
+  .board-wrap{margin:14px 0 2px;}
+  .board-wrap svg{width:100%;height:auto;display:block;touch-action:manipulation;}
+  .board-wrap.pick svg{cursor:pointer;}
+  .cell{fill:transparent;}
+  .board-wrap.pick .cell.live:hover{fill:rgba(255,255,255,.09);}
+  .cell.live:focus-visible{outline:none;fill:rgba(255,255,255,.14);stroke:var(--signal);stroke-width:1.5;}
+  .mark-pulse{animation:pulse 1.6s ease-out infinite;transform-origin:center;transform-box:fill-box;}
+  @keyframes pulse{0%{opacity:.75;r:9}70%{opacity:0;r:20}100%{opacity:0;r:20}}
+  .board-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted);}
+  .board-legend b{color:var(--ink);font-weight:700;}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+  #progTime{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);}
+  .transport{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-top:10px;}
+
+  /* note-name answer grid: monospace and no text-transform, because upper and
+     lower case do real work in note spelling elsewhere in this suite */
+  .notes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+  .picked{fill:none;stroke:var(--signal);stroke-width:2.5;}
+  .note-btn{
+    font-family:'Space Mono',monospace;font-weight:700;font-size:17px;
+    border:1px solid var(--ink);background:transparent;color:var(--ink);
+    border-radius:2px;padding:11px 4px 9px;cursor:pointer;
+    transition:background .12s,color .12s,border-color .12s,opacity .14s;
+  }
+  .note-btn:hover:not(:disabled){background:var(--tint-b);}
+  .note-btn:disabled{opacity:.32;cursor:default;}
+  .note-btn:focus-visible{outline:2px solid var(--signal);outline-offset:2px;}
+  .note-btn span{display:block;font-size:10px;font-weight:400;opacity:.5;margin-top:3px;}
+  .note-btn.mark-ok{background:var(--correct)!important;border-color:var(--correct)!important;color:var(--on-correct)!important;opacity:1!important;}
+  .note-btn.mark-no{background:var(--signal)!important;border-color:var(--signal)!important;color:var(--on-signal)!important;opacity:1!important;}
+  .note-btn.mark-truth{border-color:var(--correct)!important;color:var(--correct)!important;opacity:1!important;box-shadow:inset 0 0 0 1px var(--correct);}
+
+  .verdict{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.18em;font-weight:700;font-size:14px;min-height:40px;margin-top:14px;}
+  .verdict.warn{color:var(--warn);}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+
+  .chart{margin-top:18px;}
+  .chart svg{width:100%;height:auto;display:block;}
+
+  .block{margin-top:18px;border-top:1px solid var(--rule);padding-top:14px;}
+  .set-hint{font-size:12px;color:var(--muted);line-height:1.45;margin:6px 0 0;}
+  .seg button{flex:1 1 auto;min-width:70px;font-family:'Barlow',sans-serif;font-size:13px;padding:9px 6px;border:1px solid var(--rule);background:transparent;color:var(--graphite);border-radius:2px;cursor:pointer;}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{
+    position:relative;flex:1 1 auto;min-width:62px;
+    display:flex;align-items:center;justify-content:center;gap:4px;
+    border:1px solid var(--rule);border-radius:2px;padding:8px 4px 8px 16px;
+    cursor:pointer;user-select:none;background:transparent;
+    font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);opacity:.55;
+    transition:background .12s,border-color .12s,color .12s,opacity .12s;
+  }
+  .chip::before{
+    content:'';position:absolute;left:5px;top:50%;
+    width:7px;height:7px;margin-top:-3.5px;border-radius:50%;
+    border:1px solid var(--muted);background:transparent;
+    transition:background .12s,border-color .12s;
+  }
+  .chip[aria-pressed="true"]{border-color:var(--signal);color:var(--ink);background:var(--wash-no-b);opacity:1;}
+  .chip[aria-pressed="true"]::before{background:var(--signal);border-color:var(--signal);}
+  .chip:focus-visible{outline:2px solid var(--signal);outline-offset:2px;}
+  .chip b{font-weight:700;}
+  .score-of{font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);margin:6px 0 0;}
+  .score-clock{font-size:32px;color:var(--graphite);}
+  .score-row b{flex:0 0 86px;font-weight:400;color:var(--muted);}
+
+  @keyframes spotlight{
+    0%{box-shadow:inset 0 0 0 1px transparent;background:transparent;}
+    18%{box-shadow:inset 0 0 0 2px var(--signal);background:var(--wash-no-b);}
+    70%{box-shadow:inset 0 0 0 2px var(--signal);background:var(--wash-no-b);}
+    100%{box-shadow:inset 0 0 0 1px transparent;background:transparent;}
+  }
+  #setupBlock{border-radius:3px;}
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;}
+    .flash.fire{animation:none;}
+    .flash.ok,.flash.no{opacity:0;}
+    .mark-pulse{animation:none;opacity:0;}
+    .spotlight{animation:none;outline:2px solid var(--signal);outline-offset:4px;}
+  }
+</style>
+</head>
+<body>
+<main class="panel" id="panel">
+  <div class="wordmark">
+    <a class="wm-item" href="/">My Ear Trainer</a>
+    <h1 class="wm-item">My Fretboard Trainer</h1>
+  </div>
+  <div class="flash" id="flash"></div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tabName" role="tab" aria-selected="true">Name the note</button>
+    <button class="tab" id="tabFind" role="tab" aria-selected="false">Find the note</button>
+    <button class="tab tab-gear" id="prefsBtn" aria-expanded="false" aria-label="Preferences">⚙</button>
+  </div>
+
+  <div id="prefsBack" class="sheet-back" hidden></div>
+  <section id="prefs" class="sheet" hidden role="dialog" aria-modal="true" aria-label="Preferences">
+    <div class="sheet-head">
+      <span class="sheet-title">Preferences</span>
+      <button class="sheet-x" id="prefsClose" aria-label="Close">×</button>
+    </div>
+    <div class="set-row" style="margin-top:14px">
+      <div class="set-lab">Questions per round · <span class="slider-val" id="roundLenVal">20</span></div>
+      <input type="range" id="roundLen" min="5" max="100" value="20" step="5">
+    </div>
+    <div class="set-row">
+      <div class="set-lab">Appearance</div>
+      <div class="seg" id="themeSeg">
+        <button data-theme="auto" aria-pressed="true">Auto</button>
+        <button data-theme="light" aria-pressed="false">Light</button>
+        <button data-theme="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+    <div class="set-row">
+      <div class="set-lab">Hand</div>
+      <div class="seg" id="handSeg">
+        <button data-hand="right" aria-pressed="true">Right</button>
+        <button data-hand="left" aria-pressed="false">Left</button>
+      </div>
+      <p class="set-hint">Left flips the board so the nut sits on the right.</p>
+    </div>
+    <div class="set-row">
+      <div class="set-lab">Sound</div>
+      <div class="seg" id="fxSeg">
+        <button data-fx="on" aria-pressed="true">On</button>
+        <button data-fx="off" aria-pressed="false">Off</button>
+      </div>
+      <p class="set-hint">Notes as you mark them, the note you were asked for, and a thud when you get one wrong.</p>
+    </div>
+    <div class="set-row">
+      <div class="set-lab">Volume · <span class="slider-val" id="volVal">50%</span></div>
+      <input type="range" id="vol" min="5" max="100" value="50" step="1">
+    </div>
+    <div class="set-row">
+      <button class="btn" id="prefsDone">Done</button>
+    </div>
+  </section>
+
+  <div id="roundBack" class="sheet-back" hidden></div>
+  <section id="roundSheet" class="sheet" hidden role="dialog" aria-modal="true" aria-label="Round summary">
+    <div class="sheet-head">
+      <span class="sheet-title" id="roundTitle">Round summary</span>
+      <button class="sheet-x" id="roundClose" aria-label="Close">×</button>
+    </div>
+    <div class="score">
+      <span class="score-num" id="roundPct">—</span>
+      <span class="score-num score-clock" id="roundClock">—</span>
+    </div>
+    <p class="score-of" id="roundOf"></p>
+    <div class="score-bars" id="roundBreak"></div>
+    <p class="score-say" id="roundSay"></p>
+    <div class="set-row" id="roundActions"></div>
+  </section>
+
+  <p class="eyebrow" id="eyebrow">Fretboard · bass 4</p>
+  <h2 class="sec-head" id="taskHead">Name the note</h2>
+  <p class="sec-sub" id="taskSub">One position is marked. Say which note it is.</p>
+
+  <p class="readout-cap" id="readCap">Marked position</p>
+  <div class="readout">
+    <span class="num" id="readNum">—</span>
+    <span class="unit" id="readUnit"></span>
+  </div>
+
+  <div class="board-wrap" id="boardWrap">
+    <svg id="board" viewBox="0 0 500 200" role="img" aria-label="Fretboard"></svg>
+  </div>
+  <div class="board-legend" id="boardLegend"></div>
+
+  <div class="prog">
+    <div class="prog-head">
+      <span id="progLabel">Round of 20</span>
+      <span><span id="progCount">0 / 20</span> · <span id="progTime">0:00</span></span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+  </div>
+
+  <div class="transport">
+    <button class="btn btn-primary" id="nextBtn">Next position<span class="btn-key">space</span></button>
+    <button class="btn" id="playBtn" disabled>Hear it<span class="btn-key">R</span></button>
+  </div>
+
+  <div class="notes-grid" id="notesGrid"></div>
+
+  <p class="verdict" id="verdict"></p>
+
+  <div class="stats">
+    <div><div class="stat-k">Asked</div><div class="stat-v" id="sAsked">0</div></div>
+    <div><div class="stat-k">Correct</div><div class="stat-v" id="sAcc">—</div></div>
+    <div><div class="stat-k">Streak</div><div class="stat-v" id="sStreak">0</div></div>
+    <div><div class="stat-k">Median</div><div class="stat-v" id="sTime">—</div></div>
+  </div>
+
+  <div class="chart">
+    <div class="chart-head">
+      <span class="chart-title">Accuracy by position</span>
+      <span class="chart-note" id="heatNote">no data yet</span>
+    </div>
+    <svg id="heat" viewBox="0 0 500 160" role="img" aria-label="Accuracy by fretboard position"></svg>
+    <div class="board-legend" id="heatLegend">
+      <span><i class="swatch" style="background:var(--signal)"></i>under 50%</span>
+      <span><i class="swatch" style="background:var(--warn)"></i>50–79%</span>
+      <span><i class="swatch" style="background:var(--correct)"></i>80% and up</span>
+      <span><i class="swatch" style="background:var(--tint-c)"></i>not asked yet</span>
+    </div>
+  </div>
+
+  <div class="chart">
+    <div class="chart-head">
+      <span class="chart-title">Accuracy by note name</span>
+      <span class="chart-note" id="noteChartNote">no data yet</span>
+    </div>
+    <svg id="noteChart" viewBox="0 0 500 130" role="img" aria-label="Accuracy by note name"></svg>
+  </div>
+
+  <div class="block">
+    <p class="block-head">The exercise</p>
+    <div id="setupBlock">
+      <div class="set-row">
+        <div class="set-lab">Instrument</div>
+        <div class="seg" id="instSeg">
+          <button data-inst="bass4" aria-pressed="true">Bass 4</button>
+          <button data-inst="bass5" aria-pressed="false">Bass 5</button>
+          <button data-inst="guitar6" aria-pressed="false">Guitar</button>
+        </div>
+      </div>
+
+      <div class="set-row">
+        <div class="set-lab">Strings in play</div>
+        <div class="chips" id="stringChips"></div>
+      </div>
+
+      <div class="set-row">
+        <div class="set-lab">Frets · <span class="slider-val" id="fretVal">0–5</span></div>
+        <div class="dual" id="fretDual"></div>
+      </div>
+
+      <div class="set-row">
+        <div class="set-lab">Notes</div>
+        <div class="seg" id="poolSeg">
+          <button data-pool="nat" aria-pressed="true">Naturals only</button>
+          <button data-pool="all" aria-pressed="false">All twelve</button>
+        </div>
+      </div>
+
+      <div class="set-row">
+        <div class="set-lab">Note names on the board</div>
+        <div class="seg" id="labelSeg">
+          <button data-label="off" aria-pressed="false">Off</button>
+          <button data-label="reveal" aria-pressed="true">On reveal</button>
+          <button data-label="always" aria-pressed="false">Always</button>
+        </div>
+        <p class="set-hint" id="labelHint">On reveal shows every note in play once you have answered — the check that turns a guess into a map.</p>
+      </div>
+    </div>
+
+    <div class="set-row">
+      <button class="btn btn-sm" id="resetBtn">Reset stats and charts</button>
+    </div>
+  </div>
+
+  <p class="note">Nothing is saved between visits. Close the tab and the board starts clean.</p>
+  <audio id="player" preload="auto" style="display:none"></audio>
+</main>
+
+<script src="../audio.js"></script>
+<script>
+(function(){
+  'use strict';
+  function el(id){return document.getElementById(id);}
+  var SVGNS='http://www.w3.org/2000/svg';
+
+  /* ================= note theory ================= */
+  var SHARP=['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
+  var FLAT =['C','D\u266D','D','E\u266D','E','F','G\u266D','G','A\u266D','A','B\u266D','B'];
+  var NATURAL_PCS=[0,2,4,5,7,9,11];
+  var LETTER_KEY={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+
+  function pcOf(midi){ return ((midi%12)+12)%12; }
+  function octOf(midi){ return Math.floor(midi/12)-1; }
+  function isNatural(pc){ return NATURAL_PCS.indexOf(pc)>=0; }
+  function nameOf(pc){ return SHARP[pc]; }
+  function altOf(pc){ return FLAT[pc]===SHARP[pc] ? '' : FLAT[pc]; }
+  function fullName(midi){ return SHARP[pcOf(midi)]+octOf(midi); }
+  function freqOf(midi){ return 440*Math.pow(2,(midi-69)/12); }
+
+  // Open strings low to high. Bass and guitar are written an octave above where
+  // they sound; these are sounding pitches, so a 4-string bass starts at E1.
+  var INSTRUMENTS={
+    bass4:  {label:'Bass 4',   open:[28,33,38,43],             maxFret:24},
+    bass5:  {label:'Bass 5',   open:[23,28,33,38,43],          maxFret:24},
+    guitar6:{label:'Guitar',   open:[40,45,50,55,59,64],       maxFret:22}
+  };
+  var INLAY_SINGLE=[3,5,7,9,15,17,19,21];
+  var INLAY_DOUBLE=[12,24];
+
+  /* ================= state ================= */
+  var state={
+    mode:'name',                 // 'name' | 'find'
+    inst:'bass4',
+    stringsOn:[],                // low -> high
+    fretLo:0, fretHi:5,
+    pool:'nat',                  // 'nat' | 'all'
+    labels:'reveal',             // 'off' | 'reveal' | 'always'
+    hand:'right',
+    roundLen:20,
+    fx:true, vol:0.5,
+    route:'ctx',
+    trial:null,                  // {s,f,midi,pc,target,answered,pick,ok,t0}
+    dialog:null,
+    data:{}                      // per-mode tallies
+  };
+
+  function freshRound(){
+    return {trials:0,correct:0,byString:{},byNote:{},chance:0,
+            ms:0,t0:0,running:false,started:false};
+  }
+  function freshTally(){
+    return {trials:0,correct:0,streak:0,best:0,times:[],
+            byPos:{},byNote:{},byString:{},last:null,r:freshRound()};
+  }
+
+  // Wall clock for the round, paused while a dialog is open. Median answer time
+  // already measures thinking; this measures the round as a whole, which is the
+  // number that comes down as recall replaces working it out. Leaving it running
+  // behind a settings sheet would only measure how long you spent in the sheet.
+  function clockStart(){
+    var r=D().r;
+    if(r.running) return;
+    r.t0=Date.now(); r.running=true; r.started=true;
+  }
+  function clockPause(){
+    var r=D().r;
+    if(!r.running) return;
+    r.ms+=Date.now()-r.t0; r.running=false;
+  }
+  function clockMs(){
+    var r=D().r;
+    return r.ms+(r.running?Date.now()-r.t0:0);
+  }
+  function fmtClock(ms){
+    var t=Math.round(ms/1000), m=Math.floor(t/60), sec=t-m*60;
+    return m+':'+(sec<10?'0':'')+sec;
+  }
+  state.data.name=freshTally();
+  state.data.find=freshTally();
+  function D(){ return state.data[state.mode]; }
+
+  // Standard tuning only. Alternate tunings were built and cut: they moved the
+  // whole map under the user mid-practice, which is the opposite of what this
+  // is for.
+  function openMidis(){ return INSTRUMENTS[state.inst].open.slice(); }
+  function nStrings(){ return INSTRUMENTS[state.inst].open.length; }
+  function maxFret(){ return INSTRUMENTS[state.inst].maxFret; }
+  function midiAt(s,f){ return openMidis()[s]+f; }
+  // Strings are numbered from the thinnest: string 1 is the highest pitch.
+  function stringNo(s){ return nStrings()-s; }
+
+  /* ================= sampling ================= */
+  // Every position the current settings allow. One flat list keeps sampling,
+  // the heat chart and the guessing floor all reading from the same source.
+  function pool(){
+    var out=[],o=openMidis();
+    for(var s=0;s<o.length;s++){
+      if(!state.stringsOn[s]) continue;
+      for(var f=state.fretLo;f<=state.fretHi;f++){
+        var pc=pcOf(o[s]+f);
+        if(state.pool==='nat'&&!isNatural(pc)) continue;
+        out.push({s:s,f:f,pc:pc,midi:o[s]+f});
+      }
+    }
+    return out;
+  }
+  function poolPcs(){
+    var seen={},out=[],p=pool();
+    for(var i=0;i<p.length;i++) if(!seen[p[i].pc]){ seen[p[i].pc]=1; out.push(p[i].pc); }
+    out.sort(function(a,b){return a-b;});
+    return out;
+  }
+  // Answer options are the whole allowed alphabet, not just the notes reachable
+  // in this fret window — shrinking the grid would leak the answer.
+  function options(){
+    if(state.pool==='nat') return NATURAL_PCS.slice();
+    return [0,1,2,3,4,5,6,7,8,9,10,11];
+  }
+  function chanceNow(){
+    if(state.mode==='name'){
+      // A listener who knows the settings can only narrow it to the notes that
+      // actually occur in the window, so that is the honest guessing floor.
+      var k=poolPcs().length;
+      return k?1/k:0;
+    }
+    // Finding *every* place a note sits means picking one exact subset out of
+    // all of them, so the floor is 1/C(n,k) — vanishing, and honestly so. This
+    // mode is not guessable, and the bands below end up reading raw accuracy,
+    // which is the right behaviour for a task with no shortcut.
+    var p=pool();
+    if(!p.length) return 0;
+    var pcs=poolPcs(), tot=0;
+    for(var i=0;i<pcs.length;i++){
+      var hits=0;
+      for(var j=0;j<p.length;j++) if(p[j].pc===pcs[i]) hits++;
+      tot+=1/choose(p.length,hits);
+    }
+    return tot/pcs.length;      // averaged over targets, each equally likely
+  }
+  function choose(n,k){
+    if(k<0||k>n) return 0;
+    var r=1;
+    for(var i=1;i<=k;i++) r=r*(n-k+i)/i;
+    return r;
+  }
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  /* ================= audio ================= */
+  var ctx=null, SR=44100, player=el('player');
+  function alog(m){ if(window.console&&console.warn) console.warn('[audio] '+m); }
+  function ensureCtx(){ ctx=A.ensureCtx(); return ctx; }
+  // [harmonic, amplitude, decay in nepers/sec]. Upper partials of a plucked
+  // string die far faster than the fundamental; that fading brightness is most
+  // of what makes it sound like a string rather than an organ.
+  var AMPS=[1,.62,.42,.28,.19,.13,.09,.06];
+  function decayOf(k){ return 1.7*Math.pow(k,0.82); }
+  function partials(){
+    var out=[];
+    for(var i=0;i<AMPS.length;i++) out.push([i+1,AMPS[i],decayOf(i+1)]);
+    return out;
+  }
+  var NORM=(function(){ var t=0; for(var i=0;i<AMPS.length;i++) t+=AMPS[i]; return Math.max(1,t*0.72); })();
+  // Ears are much less sensitive down low: E1 at a given amplitude sounds far
+  // quieter than A4. Rough inverse of the equal-loudness contour, 1.0 at 440 Hz.
+  function loudnessGain(f){ return A.loudnessGain(f); }
+  var DUR=1.35;
+  function scheduleNote(freq,start,dur){
+    var g=ctx.createGain(), peak=Math.min(0.98,0.92*state.vol*loudnessGain(freq));
+    var atk=0.006, rel=0.06;
+    g.gain.setValueAtTime(0.0001,start);
+    g.gain.linearRampToValueAtTime(peak,start+atk);
+    g.gain.setValueAtTime(peak,start+dur-rel);
+    g.gain.exponentialRampToValueAtTime(0.0001,start+dur);
+    g.connect(ctx.destination);
+    partials().forEach(function(p){
+      var pf=freq*p[0];
+      if(pf>18000) return;
+      var o=ctx.createOscillator();
+      o.type='sine'; o.frequency.setValueAtTime(pf,start);
+      var pg=ctx.createGain(), a=p[1]/NORM;
+      pg.gain.setValueAtTime(a,start);
+      pg.gain.exponentialRampToValueAtTime(Math.max(0.00005,a*Math.exp(-p[2]*dur)),start+dur);
+      o.connect(pg); pg.connect(g);
+      o.start(start); o.stop(start+dur+0.05);
+    });
+  }
+  function renderWav(freq,dur,fail){
+    var lead=fail?THUD_LEAD:0;
+    var n=Math.round((dur+lead)*SR), buf=new ArrayBuffer(44+n*2), dv=new DataView(buf);
+    function str(o,s){ for(var k=0;k<s.length;k++) dv.setUint8(o+k,s.charCodeAt(k)); }
+    str(0,'RIFF'); dv.setUint32(4,36+n*2,true); str(8,'WAVE');
+    str(12,'fmt '); dv.setUint32(16,16,true); dv.setUint16(20,1,true);
+    dv.setUint16(22,1,true); dv.setUint32(24,SR,true); dv.setUint32(28,SR*2,true);
+    dv.setUint16(32,2,true); dv.setUint16(34,16,true);
+    str(36,'data'); dv.setUint32(40,n*2,true);
+    var ps=partials(), amp=Math.min(0.98,0.92*state.vol*loudnessGain(freq)), off=44;
+    var kt=thudSample(SR), ty=0, tamp=Math.min(0.9,state.vol);
+    for(var i=0;i<n;i++){
+      var t=i/SR, tn=t-lead, v=0;
+      var env=tn<0?0:Math.max(0,Math.min(1,tn/0.006,(dur-tn)/0.06));
+      if(tn>=0) for(var k=0;k<ps.length;k++){
+        var pf=freq*ps[k][0];
+        if(pf>18000) continue;
+        v+=ps[k][1]*Math.exp(-ps[k][2]*tn)*Math.sin(2*Math.PI*pf*tn);
+      }
+      v=v/NORM*amp*env;
+      if(fail&&t<THUD_DUR){
+        ty+=kt.a*((Math.random()*2-1)-ty);
+        v+=ty*kt.nf*Math.exp(-THUD_DECAY*t)*tamp;
+      }
+      dv.setInt16(off,Math.max(-1,Math.min(1,v))*32767,true); off+=2;
+    }
+    return buf;
+  }
+  // blob: URLs are blocked inside the published-artifact sandbox, so the WAV
+  // goes in as a data: URI instead.
+  function wavUri(freq,dur,fail){ return A.toDataUri(renderWav(freq,dur,fail)); }
+  function playViaElement(freq,fail){
+    try{
+      player.src=wavUri(freq,DUR,fail);
+      player.volume=1;
+      var pr=player.play();
+      if(pr&&pr.then) pr.catch(function(e){ alog('element blocked: '+e.name); });
+    }catch(e){ alog('wav fallback failed: '+e.message); }
+  }
+  // Failure is a noise burst, not a pitched tone — the same decision the ear
+  // trainer landed on. A pitched error sound sits in the same world as the note
+  // being taught and muddies it; a dull thud reads as "no" and gets out of the
+  // way before the correct note arrives.
+  var THUD_DUR=0.3, THUD_LEAD=0.22, THUD_CUT=200, THUD_DECAY=11;
+  // white noise through a one-pole lowpass, normalised so the buffer lands at
+  // roughly unit RMS whatever the cutoff is
+  function thudSample(rate){
+    var a=1-Math.exp(-2*Math.PI*THUD_CUT/rate);
+    return {a:a, nf:1/Math.sqrt(a/(2-a))};
+  }
+  function scheduleThud(c,start){
+    var rate=c.sampleRate||SR, n=Math.round(THUD_DUR*rate), k=thudSample(rate);
+    var buf=c.createBuffer(1,n,rate), d=buf.getChannelData(0), y=0;
+    for(var i=0;i<n;i++){
+      y+=k.a*((Math.random()*2-1)-y);
+      d[i]=y*k.nf*Math.exp(-THUD_DECAY*i/rate);
+    }
+    var src=c.createBufferSource(); src.buffer=buf;
+    var g=c.createGain();
+    g.gain.setValueAtTime(Math.min(0.9,0.25*state.vol*4),start);
+    src.connect(g); g.connect(c.destination);
+    src.start(start);
+  }
+
+  function playMidi(midi,fail){
+    if(!state.fx) return;
+    var f=freqOf(midi);
+    var c=state.route==='element'?null:ensureCtx();
+    if(c){
+      if(fail) scheduleThud(c,c.currentTime+0.03);
+      // resume() is async and often still reads 'suspended' right here on the
+      // first gesture. Schedule anyway; only fall back if it never wakes.
+      scheduleNote(f,c.currentTime+0.05+(fail?THUD_LEAD:0),DUR);
+      if(c.state!=='running'){
+        setTimeout(function(){
+          if(c.state!=='running'&&state.route!=='element'){
+            alog('context never resumed, switching to audio element');
+            state.route='element';
+            playViaElement(f,fail);
+          }
+        },350);
+      }
+    } else {
+      state.route='element';
+      playViaElement(f,fail);
+    }
+  }
+
+  /* ================= board geometry ================= */
+  // Fret spacing is blended: true geometric spacing (each fret at
+  // 1 - 2^(-n/12) of the scale) looks like a real neck but squeezes the top
+  // frets into slivers you cannot tap. Half linear keeps every cell hittable
+  // while the taper still reads as a fingerboard.
+  var GEO_MIX=0.55;
+  function geom(opt){
+    opt=opt||{};
+    var rowH=opt.rowH||24, openW=opt.openW||34, padL=opt.padL||24,
+        padR=opt.padR||12, padT=opt.padT||18, padB=opt.padB||26,
+        span=opt.span||430;
+    var n=nStrings();
+    var N=Math.min(maxFret(),Math.max(12,state.fretHi));
+    var raw=function(k){ return 1-Math.pow(2,-k/12); };
+    var g=raw(N), frac=[];
+    for(var k=0;k<=N;k++) frac.push(GEO_MIX*(raw(k)/g)+(1-GEO_MIX)*(k/N));
+    var nutX=padL+openW;
+    var G={
+      N:N, n:n, rowH:rowH, openW:openW, padL:padL, padT:padT, nutX:nutX, span:span,
+      width:nutX+span+padR,
+      height:padT+(n-1)*rowH+padB,
+      fretX:function(k){ return nutX+frac[k]*span; },
+      y:function(s){ return padT+(n-1-s)*rowH; }
+    };
+    G.cellX=function(f){ return f===0 ? padL+openW/2 : (G.fretX(f-1)+G.fretX(f))/2; };
+    G.cellW=function(f){ return f===0 ? openW : (G.fretX(f)-G.fretX(f-1)); };
+    return G;
+  }
+  function mk(name,attrs){
+    var e=document.createElementNS(SVGNS,name);
+    if(attrs) for(var k in attrs) if(attrs.hasOwnProperty(k)) e.setAttribute(k,attrs[k]);
+    return e;
+  }
+  function txt(x,y,s,attrs){
+    var t=mk('text',attrs||{});
+    t.setAttribute('x',x); t.setAttribute('y',y);
+    t.textContent=s;
+    return t;
+  }
+  function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+
+  /* ================= the main board ================= */
+  var board=el('board'), boardWrap=el('boardWrap');
+
+  function inPlay(s,f){
+    if(!state.stringsOn[s]) return false;
+    if(f<state.fretLo||f>state.fretHi) return false;
+    if(state.pool==='nat'&&!isNatural(pcOf(midiAt(s,f)))) return false;
+    return true;
+  }
+
+  function showNames(){
+    if(state.labels==='always') return true;
+    if(state.labels==='reveal'&&state.trial&&state.trial.answered) return true;
+    return false;
+  }
+
+  function drawBoard(){
+    var G=geom({}), t=state.trial;
+    clear(board);
+    board.setAttribute('viewBox','0 0 '+G.width+' '+G.height);
+
+    var flip=state.hand==='left';
+    var root=mk('g',{});
+    if(flip) root.setAttribute('transform','translate('+G.width+',0) scale(-1,1)');
+    board.appendChild(root);
+
+    var topY=G.y(G.n-1)-G.rowH*0.62, botY=G.y(0)+G.rowH*0.62;
+
+    // fingerboard slab
+    var grad=mk('linearGradient',{id:'boardGrad',x1:'0',y1:'0',x2:'0',y2:'1'});
+    grad.appendChild(mk('stop',{offset:'0','stop-color':'var(--board-hi)'}));
+    grad.appendChild(mk('stop',{offset:'0.55','stop-color':'var(--board)'}));
+    grad.appendChild(mk('stop',{offset:'1','stop-color':'var(--board-deep)'}));
+    var defs=mk('defs',{}); defs.appendChild(grad); root.appendChild(defs);
+    root.appendChild(mk('rect',{x:G.nutX,y:topY,width:G.span,height:botY-topY,
+      fill:'url(#boardGrad)',rx:2}));
+
+    // frets
+    for(var k=1;k<=G.N;k++){
+      root.appendChild(mk('line',{x1:G.fretX(k),y1:topY,x2:G.fretX(k),y2:botY,
+        stroke:'var(--fret)','stroke-width':k<=12?2:1.6}));
+      root.appendChild(mk('line',{x1:G.fretX(k)+1,y1:topY,x2:G.fretX(k)+1,y2:botY,
+        stroke:'var(--fret-deep)','stroke-width':.6,opacity:.7}));
+    }
+    // nut
+    root.appendChild(mk('rect',{x:G.nutX-4,y:topY,width:4,height:botY-topY,
+      fill:'var(--nut)',rx:1}));
+
+    // inlays, centred between the middle strings
+    var midY=(G.y(0)+G.y(G.n-1))/2;
+    INLAY_SINGLE.forEach(function(f){
+      if(f>G.N) return;
+      root.appendChild(mk('circle',{cx:G.cellX(f),cy:midY,r:4,fill:'var(--inlay)',opacity:.5}));
+    });
+    INLAY_DOUBLE.forEach(function(f){
+      if(f>G.N) return;
+      var off=G.rowH*(G.n>4?1.1:0.85);
+      root.appendChild(mk('circle',{cx:G.cellX(f),cy:midY-off,r:4,fill:'var(--inlay)',opacity:.5}));
+      root.appendChild(mk('circle',{cx:G.cellX(f),cy:midY+off,r:4,fill:'var(--inlay)',opacity:.5}));
+    });
+
+    // the fret window in play: everything outside it is hatched back
+    var loEdge=state.fretLo===0?G.padL:G.fretX(state.fretLo-1);
+    var hiEdge=G.fretX(Math.min(state.fretHi,G.N));
+    if(loEdge>G.padL+0.5)
+      root.appendChild(mk('rect',{x:G.padL,y:topY,width:loEdge-G.padL,height:botY-topY,
+        fill:'var(--case-deep)',opacity:.42}));
+    if(hiEdge<G.nutX+G.span-0.5)
+      root.appendChild(mk('rect',{x:hiEdge,y:topY,width:G.nutX+G.span-hiEdge,height:botY-topY,
+        fill:'var(--case-deep)',opacity:.42}));
+
+    // strings: low strings are thicker, and dead strings are drawn thin and dim
+    for(var s=0;s<G.n;s++){
+      var live=state.stringsOn[s];
+      var w=1+(G.n-1-s)*0.42;
+      root.appendChild(mk('line',{x1:G.padL,y1:G.y(s),x2:G.nutX+G.span,y2:G.y(s),
+        stroke:'var(--string)','stroke-width':live?w:0.7,opacity:live?0.95:0.28}));
+    }
+
+    // note names
+    if(showNames()){
+      for(var s2=0;s2<G.n;s2++){
+        for(var f2=state.fretLo;f2<=Math.min(state.fretHi,G.N);f2++){
+          if(!inPlay(s2,f2)) continue;
+          if(t&&t.s===s2&&t.f===f2) continue;      // the marker carries its own label
+          var g2=mk('g',{});
+          if(flip) g2.setAttribute('transform','translate('+(2*G.cellX(f2))+',0) scale(-1,1)');
+          g2.appendChild(txt(G.cellX(f2),G.y(s2)+3.5,nameOf(pcOf(midiAt(s2,f2))),
+            {fill:'var(--board-ink)','font-family':"'Space Mono',monospace",'font-size':'9.5',
+             'text-anchor':'middle',opacity:'.72'}));
+          root.appendChild(g2);
+        }
+      }
+    }
+
+    // marker / picked cells
+    if(state.mode==='name'&&t){
+      var c=t.answered?(t.ok?'var(--correct)':'var(--signal)'):'var(--signal)';
+      if(!t.answered)
+        root.appendChild(mk('circle',{cx:G.cellX(t.f),cy:G.y(t.s),r:9,
+          fill:'none',stroke:c,'stroke-width':2,'class':'mark-pulse'}));
+      root.appendChild(mk('circle',{cx:G.cellX(t.f),cy:G.y(t.s),r:9.5,fill:c}));
+      if(t.answered){
+        var gl=mk('g',{});
+        if(flip) gl.setAttribute('transform','translate('+(2*G.cellX(t.f))+',0) scale(-1,1)');
+        gl.appendChild(txt(G.cellX(t.f),G.y(t.s)+3.4,nameOf(t.pc),
+          {fill:t.ok?'var(--on-correct)':'var(--on-signal)','font-family':"'Space Mono',monospace",
+           'font-size':'9','font-weight':'700','text-anchor':'middle'}));
+        root.appendChild(gl);
+      }
+    }
+    if(state.mode==='find'&&t){
+      if(!t.answered){
+        // an open ring while you are still deciding: a filled dot would read as
+        // a verdict before there is one
+        t.marks.forEach(function(k){
+          var q=k.split(':');
+          root.appendChild(mk('circle',{cx:G.cellX(Number(q[1])),cy:G.y(Number(q[0])),
+            r:9.5,'class':'picked'}));
+        });
+      } else {
+        // found, missed and spurious all read differently: filled green for the
+        // ones you got, hollow green for the ones you walked past, red for the
+        // ones that were never this note
+        var want=targetKeys(t.target);
+        want.forEach(function(k){
+          var q=k.split(':'), got=t.marks.indexOf(k)>=0;
+          root.appendChild(mk('circle',{cx:G.cellX(Number(q[1])),cy:G.y(Number(q[0])),
+            r:9.5,fill:got?'var(--correct)':'none',
+            stroke:'var(--correct)','stroke-width':2,
+            'stroke-dasharray':got?'':'3 3'}));
+        });
+        t.marks.forEach(function(k){
+          if(want.indexOf(k)>=0) return;
+          var q=k.split(':');
+          root.appendChild(mk('circle',{cx:G.cellX(Number(q[1])),cy:G.y(Number(q[0])),
+            r:9.5,fill:'var(--signal)'}));
+        });
+      }
+    }
+
+    // hit targets for picking, on top of everything
+    if(state.mode==='find'){
+      for(var s3=0;s3<G.n;s3++){
+        for(var f3=0;f3<=G.N;f3++){
+          var ok=inPlay(s3,f3);
+          var r=mk('rect',{x:G.cellX(f3)-G.cellW(f3)/2+1,y:G.y(s3)-G.rowH/2+1,
+            width:Math.max(6,G.cellW(f3)-2),height:G.rowH-2,
+            'class':'cell'+(ok?' live':'')});
+          if(ok){
+            r.setAttribute('tabindex','0');
+            r.setAttribute('role','button');
+            r.setAttribute('aria-label','String '+stringNo(s3)+', fret '+f3);
+            r.dataset.s=s3; r.dataset.f=f3;
+          }
+          root.appendChild(r);
+        }
+      }
+    }
+
+    // string numbers, outside the flip so they stay readable
+    for(var s4=0;s4<G.n;s4++){
+      board.appendChild(txt(flip?G.width-G.padL+8:G.padL-8,G.y(s4)+3.5,String(stringNo(s4)),
+        {fill:state.stringsOn[s4]?'var(--graphite)':'var(--muted)',
+         'font-family':"'Space Mono',monospace",'font-size':'10',
+         'text-anchor':flip?'start':'end',opacity:state.stringsOn[s4]?'1':'.45'}));
+    }
+    // fret numbers
+    var nums=[0].concat(INLAY_SINGLE,INLAY_DOUBLE);
+    nums.forEach(function(f){
+      if(f>G.N) return;
+      var x=G.cellX(f);
+      board.appendChild(txt(flip?G.width-x:x,G.height-8,String(f),
+        {fill:'var(--fret-num)','font-family':"'Space Mono',monospace",'font-size':'10',
+         'text-anchor':'middle',opacity:(f>=state.fretLo&&f<=state.fretHi)?'1':'.4'}));
+    });
+  }
+
+  /* ================= the answer grid ================= */
+  var notesGrid=el('notesGrid');
+  function buildGrid(){
+    clear(notesGrid);
+    if(state.mode!=='name'){ notesGrid.hidden=true; return; }
+    notesGrid.hidden=false;
+    options().forEach(function(pc){
+      var b=document.createElement('button');
+      b.className='note-btn';
+      b.dataset.pc=pc;
+      b.disabled=true;
+      var main=document.createTextNode(nameOf(pc));
+      b.appendChild(main);
+      var sp=document.createElement('span');
+      var alt=altOf(pc);
+      sp.textContent=alt?alt:keyHint(pc);
+      b.appendChild(sp);
+      notesGrid.appendChild(b);
+    });
+  }
+  // Letter keys pick the natural; shift picks the sharp above it. That mirrors
+  // how the note is spelled, so the hand learns the same map as the eye.
+  function keyHint(pc){
+    for(var L in LETTER_KEY) if(LETTER_KEY.hasOwnProperty(L)&&LETTER_KEY[L]===pc) return L.toLowerCase();
+    return '';
+  }
+  function pcFromKey(key,shift){
+    var L=key.toUpperCase();
+    if(!LETTER_KEY.hasOwnProperty(L)) return -1;
+    var pc=LETTER_KEY[L];
+    if(shift){
+      if(L==='E'||L==='B') return -1;   // no E#/B# in this spelling
+      pc=(pc+1)%12;
+    }
+    if(options().indexOf(pc)<0) return -1;
+    return pc;
+  }
+  function gridEnabled(on){
+    var bs=notesGrid.childNodes;
+    for(var i=0;i<bs.length;i++) bs[i].disabled=!on;
+  }
+  function gridClear(){
+    var bs=notesGrid.childNodes;
+    for(var i=0;i<bs.length;i++){
+      bs[i].className='note-btn';
+    }
+  }
+  function gridMark(pc,cls){
+    var bs=notesGrid.childNodes;
+    for(var i=0;i<bs.length;i++){
+      if(Number(bs[i].dataset.pc)===pc) bs[i].className='note-btn '+cls;
+    }
+  }
+
+  /* ================= trials ================= */
+  var readCap=el('readCap'), readNum=el('readNum'), readUnit=el('readUnit'),
+      verdict=el('verdict'), nextBtn=el('nextBtn'), playBtn=el('playBtn'),
+      panel=el('panel'), flash=el('flash');
+
+  var ORD=['1st','2nd','3rd','4th','5th','6th','7th'];
+  function ordString(s){ return ORD[stringNo(s)-1]||(stringNo(s)+'th'); }
+
+  function emptyPool(){
+    state.trial=null;
+    readCap.textContent='Nothing to ask';
+    readNum.textContent='—';
+    readNum.className='num';
+    readUnit.textContent='';
+    verdict.className='verdict warn';
+    verdict.innerHTML='No positions left in play<small>Widen the fret range, switch a string back on, or allow all twelve notes.</small>';
+    nextBtn.disabled=true;
+    playBtn.disabled=true;
+    gridEnabled(false);
+    drawBoard();
+  }
+
+  function newTrial(){
+    var p=pool();
+    if(!p.length){ emptyPool(); return; }
+    nextBtn.disabled=false;
+    gridClear();
+    flash.className='flash';
+    panel.className='panel';
+    verdict.className='verdict';
+    verdict.innerHTML='';
+    playBtn.disabled=true;
+
+    if(state.mode==='name'){
+      var cand=p;
+      if(p.length>1&&state.trial)
+        cand=p.filter(function(c){ return !(c.s===state.trial.s&&c.f===state.trial.f); });
+      var c=pick(cand.length?cand:p);
+      state.trial={s:c.s,f:c.f,midi:c.midi,pc:c.pc,answered:false,ok:false,pick:null,t0:Date.now()};
+      readCap.textContent=ordString(c.s)+' string · fret '+c.f;
+      readNum.textContent='?';
+      readNum.className='num';
+      readUnit.textContent='';
+      gridEnabled(true);
+    } else {
+      var pcs=poolPcs(), cand2=pcs;
+      if(pcs.length>1&&state.trial)
+        cand2=pcs.filter(function(x){ return x!==state.trial.target; });
+      var tgt=pick(cand2.length?cand2:pcs);
+      state.trial={target:tgt,answered:false,ok:false,marks:[],t0:Date.now()};
+      readCap.textContent='Find every one of these';
+      readNum.textContent=nameOf(tgt);
+      readNum.className='num';
+      readUnit.textContent=altOf(tgt)?'or '+altOf(tgt):'';
+      gridEnabled(false);
+    }
+    drawBoard();
+    if(D().r.trials<state.roundLen) clockStart();
+    progress();
+  }
+
+  function median(a){
+    if(!a.length) return 0;
+    var b=a.slice().sort(function(x,y){return x-y;}), m=b.length>>1;
+    return b.length%2?b[m]:(b[m-1]+b[m])/2;
+  }
+
+  function bump(map,key,ok){
+    if(!map[key]) map[key]=[0,0];
+    map[key][1]++; if(ok) map[key][0]++;
+  }
+
+  function record(ok,posKey,pc,s,ms){
+    var d=D();
+    d.trials++; if(ok){ d.correct++; d.streak++; if(d.streak>d.best) d.best=d.streak; }
+    else d.streak=0;
+    d.times.push(ms);
+    bump(d.byPos,posKey,ok);
+    bump(d.byNote,String(pc),ok);
+    bump(d.byString,String(s),ok);
+    d.r.trials++; if(ok) d.r.correct++;
+    bump(d.r.byString,String(s),ok);
+    bump(d.r.byNote,String(pc),ok);
+    d.r.chance+=chanceNow();
+  }
+
+  function feedback(ok){
+    flash.className='flash '+(ok?'ok':'no');
+    void flash.offsetWidth;
+    flash.className='flash fire '+(ok?'ok':'no');
+    panel.className='panel '+(ok?'edge-ok':'edge-no');
+    setTimeout(function(){ panel.className='panel'; },700);
+  }
+
+  function answerName(pc){
+    var t=state.trial;
+    if(!t||t.answered) return;
+    t.answered=true; t.pick=pc; t.ok=(pc===t.pc);
+    var ms=Date.now()-t.t0;
+    record(t.ok,t.s+':'+t.f,t.pc,t.s,ms);
+
+    gridEnabled(false);
+    gridMark(pc,t.ok?'mark-ok':'mark-no');
+    if(!t.ok) gridMark(t.pc,'mark-truth');
+    readNum.textContent=nameOf(t.pc);
+    readNum.className='num '+(t.ok?'ok':'no');
+    readUnit.textContent=fullName(t.midi)+(altOf(t.pc)?' · '+altOf(t.pc):'');
+    verdict.className='verdict '+(t.ok?'ok':'no');
+    verdict.innerHTML=(t.ok?'Correct':'It was '+nameOf(t.pc))+
+      '<small>'+ordString(t.s)+' string, fret '+t.f+' \u2014 '+fullName(t.midi)+
+      ' at '+Math.round(freqOf(t.midi))+' Hz.</small>';
+    playBtn.disabled=false;
+    feedback(t.ok);
+    playMidi(t.midi,!t.ok);
+    drawBoard();
+    afterAnswer();
+  }
+
+  // Every place the target sits inside the current window.
+  function targetKeys(pc){
+    return pool().filter(function(p){ return p.pc===pc; })
+                 .map(function(p){ return p.s+':'+p.f; });
+  }
+  // The trial checks itself as soon as you have put down as many marks as there
+  // are places, so there is no button to press. It counts *marks*, not correct
+  // ones: three marks with one in the wrong place still resolves, and still
+  // scores wrong. The cost is a small leak — marking three and having nothing
+  // happen tells you there is a fourth — and that is the trade taken knowingly
+  // in exchange for never pressing Check.
+  function toggleMark(s,f){
+    var t=state.trial;
+    if(!t||t.answered||!inPlay(s,f)) return;
+    var k=s+':'+f, i=t.marks.indexOf(k);
+    if(i>=0) t.marks.splice(i,1); else t.marks.push(k);
+    drawBoard();
+    // Marking sounds the note you put your finger on, right or wrong \u2014 that is
+    // the ear half of the exercise, and hearing a wrong pick is the correction.
+    // Unmarking is silent: taking a finger off is not a sound.
+    // The mark that completes the count hands its own pitch to checkFind rather
+    // than playing here, or the verdict note would land on top of it.
+    if(t.marks.length>=targetKeys(t.target).length){ checkFind(midiAt(s,f)); return; }
+    if(i<0) playMidi(midiAt(s,f));
+  }
+  function checkFind(heard){
+    var t=state.trial;
+    if(!t||t.answered||!t.marks.length) return;
+    var want=targetKeys(t.target);
+    var found=want.filter(function(k){ return t.marks.indexOf(k)>=0; });
+    var extra=t.marks.filter(function(k){ return want.indexOf(k)<0; });
+    t.answered=true;
+    t.ok=(found.length===want.length&&extra.length===0);
+    var ms=Date.now()-t.t0;
+
+    // The trial scores all or nothing — a partial map of the neck is not a map.
+    // The heat chart is fed per position, though, so a place you keep walking
+    // past shows up as itself rather than being smeared over the whole trial.
+    var d=D();
+    d.trials++;
+    if(t.ok){ d.correct++; d.streak++; if(d.streak>d.best) d.best=d.streak; }
+    else d.streak=0;
+    d.times.push(ms);
+    d.r.trials++; if(t.ok) d.r.correct++;
+    d.r.chance+=chanceNow();
+    bump(d.byNote,String(t.target),t.ok);
+    bump(d.r.byNote,String(t.target),t.ok);
+    want.forEach(function(k){
+      var got=found.indexOf(k)>=0;
+      bump(d.byPos,k,got);
+      bump(d.byString,k.split(':')[0],got);
+      bump(d.r.byString,k.split(':')[0],got);
+    });
+    extra.forEach(function(k){
+      bump(d.byPos,k,false);
+      bump(d.byString,k.split(':')[0],false);
+      bump(d.r.byString,k.split(':')[0],false);
+    });
+
+    readNum.className='num '+(t.ok?'ok':'no');
+    var detail;
+    if(t.ok) detail=want.length===1
+      ? 'The only '+nameOf(t.target)+' in this window.'
+      : 'All '+want.length+' of them.';
+    else {
+      var bits=[];
+      if(found.length<want.length)
+        bits.push('found '+found.length+' of '+want.length);
+      if(extra.length)
+        bits.push(extra.length+(extra.length===1?' that was not':' that were not')+' this note');
+      detail=bits.join(', ')+'. Dashed rings are the ones you walked past.';
+      detail=detail.charAt(0).toUpperCase()+detail.slice(1);
+    }
+    verdict.className='verdict '+(t.ok?'ok':'no');
+    verdict.innerHTML=(t.ok?'Correct':'Not quite')+'<small>'+detail+'</small>';
+    playBtn.disabled=false;
+    feedback(t.ok);
+    playMidi(heard===undefined?lowestOf(t.target):heard,!t.ok);
+    drawBoard();
+    afterAnswer();
+  }
+  function lowestOf(pc){
+    var ps=pool().filter(function(p){ return p.pc===pc; });
+    var lo=ps[0]?ps[0].midi:60;
+    ps.forEach(function(p){ if(p.midi<lo) lo=p.midi; });
+    return lo;
+  }
+
+  function afterAnswer(){
+    renderStats();
+    drawHeat();
+    drawNoteChart();
+    progress();
+    var d=D();
+    if(d.r.trials>=state.roundLen) setTimeout(finishRound,650);
+  }
+
+  /* ================= progress and stats ================= */
+  function progress(){
+    var d=D();
+    el('progLabel').textContent='Round of '+state.roundLen;
+    el('progCount').textContent=d.r.trials+' / '+state.roundLen;
+    el('progTime').textContent=fmtClock(clockMs());
+    el('progFill').style.width=Math.min(100,100*d.r.trials/state.roundLen)+'%';
+  }
+  function tick(){ if(D().r.running) el('progTime').textContent=fmtClock(clockMs()); }
+  function renderStats(){
+    var d=D();
+    el('sAsked').textContent=d.trials;
+    el('sAcc').textContent=d.trials?Math.round(100*d.correct/d.trials)+'%':'\u2014';
+    el('sStreak').textContent=d.streak+(d.best>d.streak?' ('+d.best+')':'');
+    el('sTime').textContent=d.times.length?(median(d.times)/1000).toFixed(1)+'s':'\u2014';
+  }
+
+  /* ================= charts ================= */
+  function heatColor(ok,n){
+    if(!n) return 'var(--tint-c)';
+    var a=ok/n;
+    if(a>=0.8) return 'var(--correct)';
+    if(a>=0.5) return 'var(--warn)';
+    return 'var(--signal)';
+  }
+  // The chart is the instrument. A bar chart of the same numbers would hide the
+  // thing that matters: whether the weak spots cluster on a string or a region.
+  function drawHeat(){
+    var svg=el('heat'), d=D();
+    var G=geom({rowH:18,openW:26,padT:14,padB:20,span:340,padL:20,padR:10});
+    clear(svg);
+    svg.setAttribute('viewBox','0 0 '+G.width+' '+G.height);
+    var asked=0;
+    for(var s=0;s<G.n;s++){
+      for(var f=0;f<=G.N;f++){
+        var live=inPlay(s,f);
+        var cell=d.byPos[s+':'+f];
+        var n=cell?cell[1]:0, ok=cell?cell[0]:0;
+        if(n) asked++;
+        if(!live&&!n) continue;
+        svg.appendChild(mk('rect',{x:G.cellX(f)-Math.max(5,G.cellW(f)-3)/2,
+          y:G.y(s)-G.rowH/2+2,width:Math.max(5,G.cellW(f)-3),height:G.rowH-4,rx:1.5,
+          fill:heatColor(ok,n),opacity:n?(live?0.95:0.6):0.5}));
+      }
+    }
+    for(var s2=0;s2<G.n;s2++)
+      svg.appendChild(txt(G.padL-6,G.y(s2)+3.5,String(stringNo(s2)),
+        {fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
+    [0,3,5,7,9,12,15,17,19,21,24].forEach(function(f){
+      if(f>G.N) return;
+      svg.appendChild(txt(G.cellX(f),G.height-6,String(f),
+        {fill:'var(--fret-num)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'middle'}));
+    });
+    el('heatNote').textContent=asked?asked+' of '+pool().length+' positions seen':'no data yet';
+  }
+
+  function drawNoteChart(){
+    var svg=el('noteChart'), d=D();
+    var opts=options(), W=500, H=130, padL=26, padB=30, padT=14, padR=8;
+    clear(svg);
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);
+    var plotW=W-padL-padR, plotH=H-padT-padB;
+    // baseline and the 100% rule
+    svg.appendChild(mk('line',{x1:padL,y1:padT+plotH,x2:W-padR,y2:padT+plotH,
+      stroke:'var(--rule)','stroke-width':1}));
+    svg.appendChild(mk('line',{x1:padL,y1:padT,x2:W-padR,y2:padT,
+      stroke:'var(--rule)','stroke-width':1,'stroke-dasharray':'2 3'}));
+    svg.appendChild(txt(padL-5,padT+4,'100',{fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
+    svg.appendChild(txt(padL-5,padT+plotH+3,'0',{fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
+
+    var ch=chanceNow();
+    if(ch>0&&ch<1){
+      var cy=padT+plotH-ch*plotH;
+      svg.appendChild(mk('line',{x1:padL,y1:cy,x2:W-padR,y2:cy,
+        stroke:'var(--tint-strong)','stroke-width':1,'stroke-dasharray':'4 3'}));
+      svg.appendChild(txt(W-padR,cy-4,'guessing '+Math.round(ch*100)+'%',
+        {fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
+    }
+
+    var slot=plotW/opts.length, seen=0;
+    opts.forEach(function(pc,i){
+      var cell=d.byNote[String(pc)], n=cell?cell[1]:0, ok=cell?cell[0]:0;
+      if(n) seen++;
+      var bw=Math.min(26,slot*0.66), x=padL+slot*(i+0.5)-bw/2;
+      var a=n?ok/n:0, h=n?Math.max(1.5,a*plotH):0;
+      svg.appendChild(mk('rect',{x:x,y:padT+plotH-h,width:bw,height:h,rx:1,
+        fill:n?heatColor(ok,n):'var(--tint-c)'}));
+      if(!n)
+        svg.appendChild(mk('rect',{x:x,y:padT+plotH-3,width:bw,height:3,rx:1,fill:'var(--tint-c)'}));
+      svg.appendChild(txt(padL+slot*(i+0.5),H-15,nameOf(pc),
+        {fill:'var(--graphite)','font-family':"'Space Mono',monospace",'font-size':'10','text-anchor':'middle'}));
+      svg.appendChild(txt(padL+slot*(i+0.5),H-4,n?String(n):'\u2013',
+        {fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'8.5','text-anchor':'middle'}));
+    });
+    el('noteChartNote').textContent=seen?seen+' of '+opts.length+' notes seen':'no data yet';
+  }
+
+  /* ================= advice and the round summary ================= */
+  // Judged against the guessing floor, not a flat percentage. Naturals on one
+  // string and all twelve across six are not the same test, and scoring 55% on
+  // the second is a better night's work than 70% on the first.
+  function band(acc,chance){
+    if(chance>=0.99) return 'harder';
+    var above=(acc-chance)/(1-chance);
+    if(above>=0.8) return 'harder';
+    if(above>=0.5) return 'hold';
+    if(above>=0.2) return 'ease';
+    return 'easier';
+  }
+  function worst(map,labeller){
+    var keys=Object.keys(map), best=null;
+    keys.forEach(function(k){
+      var n=map[k][1]; if(n<2) return;
+      var a=map[k][0]/n;
+      if(!best||a<best.a) best={k:k,a:a,n:n,label:labeller(k)};
+    });
+    return best;
+  }
+  // What to widen next, in the order that keeps the neck learnable: a bigger
+  // window on the strings you know, then more strings, then the accidentals.
+  function nextStep(){
+    var on=0,off=-1;
+    for(var s=0;s<nStrings();s++){
+      if(state.stringsOn[s]) on++; else if(off<0) off=s;
+    }
+    if(state.fretHi<12) return 'push the top fret out to '+Math.min(12,state.fretHi+3);
+    if(off>=0) return 'switch the '+ordString(off)+' string back on';
+    if(state.pool==='nat') return 'move to all twelve notes';
+    if(state.fretHi<maxFret()) return 'take the window up to fret '+maxFret();
+    return 'work on speed — the median answer time is the thing to push down now';
+  }
+  function easeStep(){
+    if(state.pool==='all') return 'drop back to naturals only';
+    if(state.fretHi-state.fretLo>4) return 'pull the fret window in to about five frets';
+    var on=0;
+    for(var s=0;s<nStrings();s++) if(state.stringsOn[s]) on++;
+    if(on>1) return 'take it down to one or two strings and rebuild from there';
+    return 'slow down and say each note out loud before you answer';
+  }
+
+  var roundSheet=el('roundSheet'), roundBack=el('roundBack');
+  function bar(label,ok,n){
+    var pct=n?Math.round(100*ok/n):0;
+    return '<div class="score-row"><b>'+label+'</b>'+
+      '<span class="score-bar"><i style="width:'+(n?pct:0)+'%"></i></span>'+
+      '<span>'+(n?pct+'% ('+n+')':'\u2014')+'</span></div>';
+  }
+  // A time is only comparable against a round of the same length on the same
+  // neck, so the settings are fingerprinted and the comparison is dropped
+  // rather than fudged when anything moved.
+  function settingsSig(){
+    return [state.mode,state.inst,state.stringsOn.join(''),state.fretLo,state.fretHi,
+            state.pool,state.roundLen].join('|');
+  }
+  function finishRound(){
+    clockPause();
+    var d=D(), r=d.r, n=r.trials, ok=r.correct, acc=n?ok/n:0;
+    var chance=n?r.chance/n:0;
+    var ms=r.ms, per=n?ms/1000/n:0;
+    el('roundTitle').textContent=state.mode==='name'?'Name the note':'Find the note';
+    el('roundPct').textContent=Math.round(acc*100)+'%';
+    el('roundClock').textContent=fmtClock(ms);
+    el('roundOf').textContent=ok+' of '+n+' correct · guessing would give '+
+      Math.round(chance*100)+'% · '+per.toFixed(1)+'s per note';
+
+    // strings worst first: the weak string is the thing you go and practise
+    var rows='', keys=Object.keys(r.byString);
+    keys.sort(function(a,b){
+      var A=r.byString[a],B=r.byString[b];
+      return (A[0]/A[1])-(B[0]/B[1]);
+    });
+    keys.forEach(function(k){
+      var s=Number(k);
+      rows+=bar(ordString(s)+' · '+nameOf(pcOf(openMidis()[s]))+' string',r.byString[k][0],r.byString[k][1]);
+    });
+    el('roundBreak').innerHTML=rows;
+
+    var b=band(acc,chance), say='';
+    var wS=worst(r.byString,function(k){ return ordString(Number(k))+' string'; });
+    var wN=worst(r.byNote,function(k){ return nameOf(Number(k)); });
+    var window_=state.fretLo+'\u2013'+state.fretHi;
+
+    if(b==='harder'){
+      say='Frets <b>'+window_+'</b> are not costing you much any more. Time to '+
+          '<b>'+nextStep()+'</b>. Somewhere around 70 to 80% is where the learning happens.';
+    } else if(b==='hold'){
+      say='This is the right level — stretched but not guessing. Another round on frets '+
+          '<b>'+window_+'</b> is the useful thing to do.';
+    } else if(b==='ease'){
+      say='Hard going on frets <b>'+window_+'</b>, though clearly above the '+
+          Math.round(chance*100)+'% guessing would give you. Staying here is fine; so is easing off.';
+    } else {
+      say='At '+Math.round(acc*100)+'% you are near the '+Math.round(chance*100)+
+          '% that guessing scores, so there is little to learn from here. Better to <b>'+
+          easeStep()+'</b> and build back up.';
+    }
+    if(wS&&wS.a<0.6) say+=' Your '+wS.label+' is the weak one at '+Math.round(wS.a*100)+'%.';
+    if(wN&&wN.a<0.6) say+=' <b>'+wN.label+'</b> is the note that keeps catching you out.';
+    if(d.times.length>=5){
+      var med=median(d.times)/1000;
+      if(med>6&&acc>0.75) say+=' You are getting them right but taking '+med.toFixed(1)+
+        's — that is counting up from the open string. The aim is to know it, not derive it.';
+    }
+    var sig=settingsSig();
+    if(d.last&&d.last.sig===sig&&d.last.ms>0){
+      var diff=(d.last.ms-ms)/1000;
+      if(Math.abs(diff)>=1.5)
+        say+=' That round took '+Math.abs(diff).toFixed(0)+'s '+
+             (diff>0?'less':'more')+' than your last one at this setting.';
+    }
+    d.last={sig:sig,ms:ms,acc:acc};
+    el('roundSay').innerHTML=say;
+
+    var wrap=el('roundActions');
+    clear(wrap);
+    [['Another round','again'],['Adjust the exercise','adjust']].forEach(function(a,i){
+      var btn=document.createElement('button');
+      btn.className='btn'+(i===0?' btn-primary':'');
+      btn.textContent=a[0];
+      btn.dataset.act=a[1];
+      wrap.appendChild(btn);
+    });
+    openDialog('round');
+  }
+  // The summary advises. It never changes a setting on its own.
+  function revealSetup(){
+    var target=el('setupBlock');
+    setTimeout(function(){
+      if(target.scrollIntoView){
+        try{ target.scrollIntoView({behavior:'smooth',block:'center'}); }
+        catch(e){ target.scrollIntoView(); }
+      }
+      target.className='';
+      void target.offsetWidth;
+      target.className='spotlight';
+      setTimeout(function(){ target.className=''; },2000);
+    },60);
+  }
+  function roundReset(){
+    D().r=freshRound();
+    progress();
+  }
+
+  /* ================= dialogs ================= */
+  function openDialog(which){
+    state.dialog=which;
+    clockPause();
+    if(which==='prefs'){
+      el('prefsBack').hidden=false; el('prefs').hidden=false;
+      el('prefsBtn').setAttribute('aria-expanded','true');
+    } else {
+      roundBack.hidden=false; roundSheet.hidden=false;
+    }
+  }
+  function closeDialog(){
+    el('prefsBack').hidden=true; el('prefs').hidden=true;
+    el('prefsBtn').setAttribute('aria-expanded','false');
+    roundBack.hidden=true; roundSheet.hidden=true;
+    state.dialog=null;
+    var r=D().r;
+    if(r.started&&r.trials<state.roundLen) clockStart();
+    progress();
+  }
+
+  /* ================= dual-handle slider ================= */
+  // No native two-thumb range exists, so this builds one. Grabbing picks the
+  // nearer thumb, which keeps both reachable when they sit on top of each other.
+  function dualRange(id,opt){
+    var host=el(id), min=opt.min, max=opt.max, step=opt.step||1;
+    var lo=opt.lo, hi=opt.hi, drag=null;
+    var track=document.createElement('div'); track.className='dual-track';
+    var fill=document.createElement('div'); fill.className='dual-fill';
+    track.appendChild(fill); host.appendChild(track);
+    function mkThumb(which){
+      var t=document.createElement('div');
+      t.className='dual-thumb';
+      t.setAttribute('role','slider');
+      t.setAttribute('tabindex','0');
+      t.setAttribute('aria-label',which==='lo'?'Lowest fret':'Highest fret');
+      t.dataset.h=which;
+      host.appendChild(t);
+      return t;
+    }
+    var tLo=mkThumb('lo'), tHi=mkThumb('hi');
+    function pct(v){ return (v-min)/(max-min)*100; }
+    function clampStep(v){
+      v=Math.round((v-min)/step)*step+min;
+      return Math.max(min,Math.min(max,v));
+    }
+    function paint(){
+      tLo.style.left=pct(lo)+'%';
+      tHi.style.left=pct(hi)+'%';
+      fill.style.left=pct(lo)+'%';
+      fill.style.width=(pct(hi)-pct(lo))+'%';
+      [[tLo,lo],[tHi,hi]].forEach(function(p){
+        p[0].setAttribute('aria-valuemin',min);
+        p[0].setAttribute('aria-valuemax',max);
+        p[0].setAttribute('aria-valuenow',p[1]);
+      });
+    }
+    function emit(){ paint(); if(opt.onChange) opt.onChange(lo,hi); }
+    function valueAt(clientX){
+      var r=host.getBoundingClientRect();
+      if(!r.width) return lo;
+      return clampStep(min+((clientX-r.left)/r.width)*(max-min));
+    }
+    function nearest(v){
+      if(v<lo) return 'lo';
+      if(v>hi) return 'hi';
+      if(Math.abs(v-lo)===Math.abs(v-hi)) return (v>lo)?'hi':'lo';
+      return Math.abs(v-lo)<Math.abs(v-hi)?'lo':'hi';
+    }
+    function apply(which,v){
+      if(which==='lo') lo=Math.min(v,hi); else hi=Math.max(v,lo);
+      emit();
+    }
+    host.addEventListener('pointerdown',function(e){
+      var v=valueAt(e.clientX);
+      drag=(e.target&&e.target.dataset&&e.target.dataset.h)||nearest(v);
+      apply(drag,v);
+      if(host.setPointerCapture&&e.pointerId!=null){
+        try{ host.setPointerCapture(e.pointerId); }catch(err){}
+      }
+      e.preventDefault();
+    });
+    host.addEventListener('pointermove',function(e){
+      if(!drag) return;
+      apply(drag,valueAt(e.clientX));
+    });
+    ['pointerup','pointercancel'].forEach(function(ev){
+      host.addEventListener(ev,function(){ drag=null; });
+    });
+    [[tLo,'lo'],[tHi,'hi']].forEach(function(p){
+      p[0].addEventListener('keydown',function(e){
+        var d=0;
+        if(e.key==='ArrowLeft'||e.key==='ArrowDown') d=-step;
+        else if(e.key==='ArrowRight'||e.key==='ArrowUp') d=step;
+        else if(e.key==='Home') d=min-(p[1]==='lo'?lo:hi);
+        else if(e.key==='End') d=max-(p[1]==='lo'?lo:hi);
+        else return;
+        e.preventDefault(); e.stopPropagation();
+        apply(p[1],clampStep((p[1]==='lo'?lo:hi)+d));
+      });
+    });
+    paint();
+    return {
+      set:function(a,b){ lo=clampStep(a); hi=clampStep(b); if(lo>hi){var t=lo;lo=hi;hi=t;} emit(); },
+      get:function(){ return [lo,hi]; },
+      limit:function(newMax){ max=newMax; if(hi>max) hi=max; if(lo>max) lo=max; emit(); }
+    };
+  }
+
+  /* ================= settings wiring ================= */
+  var fretSlider=null;
+
+  function segSet(id,attr,val){
+    var host=el(id), bs=host.childNodes;
+    for(var i=0;i<bs.length;i++){
+      if(bs[i].dataset)
+        bs[i].setAttribute('aria-pressed',bs[i].dataset[attr]===val?'true':'false');
+    }
+  }
+  function onSeg(id,attr,fn){
+    el(id).addEventListener('click',function(e){
+      var b=e.target;
+      while(b&&b!==el(id)&&!(b.dataset&&b.dataset[attr])) b=b.parentNode;
+      if(!b||b===el(id)) return;
+      var v=b.dataset[attr];
+      segSet(id,attr,v);
+      fn(v);
+    });
+  }
+
+  function buildChips(){
+    var host=el('stringChips'), o=openMidis();
+    clear(host);
+    for(var s=nStrings()-1;s>=0;s--){
+      var b=document.createElement('button');
+      b.className='chip';
+      b.dataset.s=s;
+      b.setAttribute('aria-pressed',state.stringsOn[s]?'true':'false');
+      var strong=document.createElement('b');
+      strong.textContent=String(stringNo(s));
+      b.appendChild(strong);
+      b.appendChild(document.createTextNode(' '+nameOf(pcOf(o[s]))+octOf(o[s])));
+      host.appendChild(b);
+    }
+  }
+  function setInstrument(inst){
+    state.inst=inst;
+    state.stringsOn=[];
+    for(var s=0;s<nStrings();s++) state.stringsOn.push(true);
+    if(fretSlider) fretSlider.limit(maxFret());
+    buildChips();
+    afterSettings(true);
+  }
+  function eyebrowText(){
+    return 'Fretboard · '+INSTRUMENTS[state.inst].label.toLowerCase()+' · standard tuning';
+  }
+  // Changing the neck invalidates the tallies tied to it, so they are cleared
+  // rather than quietly mixed with numbers from a different instrument.
+  function afterSettings(wipe){
+    el('eyebrow').textContent=eyebrowText();
+    el('fretVal').textContent=state.fretLo+'\u2013'+state.fretHi;
+    if(wipe){
+      state.data.name=freshTally();
+      state.data.find=freshTally();
+    }
+    buildGrid();
+    renderStats();
+    drawHeat();
+    drawNoteChart();
+    newTrial();
+  }
+
+  function setMode(m){
+    state.mode=m;
+    el('tabName').setAttribute('aria-selected',m==='name'?'true':'false');
+    el('tabFind').setAttribute('aria-selected',m==='find'?'true':'false');
+    if(m==='name'){
+      el('taskHead').textContent='Name the note';
+      el('taskSub').textContent='One position is marked. Say which note it is.';
+      nextBtn.innerHTML='Next position<span class="btn-key">space</span>';
+      boardWrap.className='board-wrap';
+    } else {
+      el('taskHead').textContent='Find the note';
+      el('taskSub').textContent='A note is named. Mark every place it appears in the frets you are using \u2014 it scores itself once they are all down.';
+      nextBtn.innerHTML='Next note<span class="btn-key">space</span>';
+      boardWrap.className='board-wrap pick';
+    }
+    el('boardLegend').innerHTML = m==='name'
+      ? '<span>Keys: <b>a\u2013g</b> for naturals, <b>shift</b> for the sharp above</span><span><b>space</b> next · <b>R</b> hear it</span>'
+      : '<span>Tap to mark, or arrow keys and <b>enter</b></span><span><b>space</b> next \u00b7 <b>R</b> hear it</span>';
+    buildGrid();
+    renderStats();
+    drawHeat();
+    drawNoteChart();
+    newTrial();
+  }
+
+  /* ================= events ================= */
+  el('tabName').addEventListener('click',function(){ setMode('name'); });
+  el('tabFind').addEventListener('click',function(){ setMode('find'); });
+  el('prefsBtn').addEventListener('click',function(){
+    if(state.dialog==='prefs') closeDialog(); else openDialog('prefs');
+  });
+  el('prefsClose').addEventListener('click',closeDialog);
+  el('prefsDone').addEventListener('click',closeDialog);
+  el('prefsBack').addEventListener('click',closeDialog);
+  el('roundClose').addEventListener('click',function(){ closeDialog(); roundReset(); });
+  roundBack.addEventListener('click',function(){ closeDialog(); roundReset(); });
+  el('roundActions').addEventListener('click',function(e){
+    var b=e.target;
+    while(b&&b!==this&&!(b.dataset&&b.dataset.act)) b=b.parentNode;
+    if(!b||b===this) return;
+    closeDialog();
+    roundReset();
+    if(b.dataset.act==='adjust') revealSetup();
+    newTrial();
+  });
+
+  nextBtn.addEventListener('click',function(){ newTrial(); });
+  playBtn.addEventListener('click',function(){
+    var t=state.trial;
+    if(!t) return;
+    if(!t.answered) return;
+    playMidi(state.mode==='name'?t.midi:lowestOf(t.target));
+  });
+
+  notesGrid.addEventListener('click',function(e){
+    var b=e.target;
+    while(b&&b!==this&&!(b.dataset&&b.dataset.pc!==undefined)) b=b.parentNode;
+    if(!b||b===this||b.disabled) return;
+    answerName(Number(b.dataset.pc));
+  });
+
+  board.addEventListener('click',function(e){
+    if(state.mode!=='find') return;
+    var t=e.target;
+    if(!t||!t.dataset||t.dataset.s===undefined) return;
+    toggleMark(Number(t.dataset.s),Number(t.dataset.f));
+  });
+  // arrow keys walk the neck so the exercise works without a pointer
+  board.addEventListener('keydown',function(e){
+    if(state.mode!=='find') return;
+    var t=e.target;
+    if(!t||!t.dataset||t.dataset.s===undefined) return;
+    if(e.key==='Enter'){
+      e.preventDefault(); e.stopPropagation();
+      toggleMark(Number(t.dataset.s),Number(t.dataset.f));
+      return;
+    }
+    var ds=0,df=0;
+    if(e.key==='ArrowUp') ds=1;
+    else if(e.key==='ArrowDown') ds=-1;
+    else if(e.key==='ArrowRight') df=1;
+    else if(e.key==='ArrowLeft') df=-1;
+    else return;
+    e.preventDefault(); e.stopPropagation();
+    var s=Number(t.dataset.s), f=Number(t.dataset.f);
+    var cells=board.querySelectorAll?board.querySelectorAll('.cell.live'):[];
+    var bestEl=null,bestD=1e9;
+    for(var i=0;i<cells.length;i++){
+      var cs=Number(cells[i].dataset.s), cf=Number(cells[i].dataset.f);
+      if(ds&&(cf!==f||(cs-s)*ds<=0)) continue;
+      if(df&&(cs!==s||(cf-f)*df<=0)) continue;
+      var dist=Math.abs(cs-s)+Math.abs(cf-f);
+      if(dist<bestD){ bestD=dist; bestEl=cells[i]; }
+    }
+    if(bestEl&&bestEl.focus) bestEl.focus();
+  });
+
+  onSeg('instSeg','inst',setInstrument);
+  onSeg('poolSeg','pool',function(v){ state.pool=v; afterSettings(true); });
+  onSeg('labelSeg','label',function(v){
+    state.labels=v;
+    el('labelHint').textContent = v==='off'
+      ? 'Off is the real test — nothing on the board to lean on.'
+      : v==='always'
+      ? 'Always is a study mode: the answer is on the board, so the score means little.'
+      : 'On reveal shows every note in play once you have answered — the check that turns a guess into a map.';
+    drawBoard();
+  });
+  onSeg('themeSeg','theme',function(v){ document.documentElement.setAttribute('data-theme',v); });
+  onSeg('handSeg','hand',function(v){ state.hand=v; drawBoard(); });
+  onSeg('fxSeg','fx',function(v){ state.fx=(v==='on'); });
+
+  el('stringChips').addEventListener('click',function(e){
+    var b=e.target;
+    while(b&&b!==this&&!(b.dataset&&b.dataset.s!==undefined)) b=b.parentNode;
+    if(!b||b===this) return;
+    var s=Number(b.dataset.s);
+    var on=0;
+    for(var i=0;i<state.stringsOn.length;i++) if(state.stringsOn[i]) on++;
+    if(state.stringsOn[s]&&on===1) return;         // never leave zero strings
+    state.stringsOn[s]=!state.stringsOn[s];
+    b.setAttribute('aria-pressed',state.stringsOn[s]?'true':'false');
+    afterSettings(false);
+  });
+
+  el('roundLen').addEventListener('input',function(){
+    state.roundLen=Number(this.value);
+    el('roundLenVal').textContent=state.roundLen;
+    progress();
+  });
+  el('vol').addEventListener('input',function(){
+    state.vol=Number(this.value)/100;
+    el('volVal').textContent=this.value+'%';
+  });
+  el('resetBtn').addEventListener('click',function(){
+    state.data.name=freshTally();
+    state.data.find=freshTally();
+    renderStats(); drawHeat(); drawNoteChart(); progress();
+  });
+  setInterval(tick,500);
+
+  document.addEventListener('keydown',function(e){
+    if(e.metaKey||e.ctrlKey||e.altKey) return;
+    if(state.dialog){
+      if(e.key==='Escape'){
+        e.preventDefault();
+        var was=state.dialog;
+        closeDialog();
+        if(was==='round'){ roundReset(); newTrial(); }
+      }
+      return;
+    }
+    var tag=e.target&&e.target.tagName?e.target.tagName.toUpperCase():'';
+    if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
+    if(e.key===' '||e.code==='Space'){
+      if(tag==='BUTTON') return;                  // let the focused button act
+      e.preventDefault(); newTrial(); return;
+    }
+    if(e.key==='r'||e.key==='R'){
+      e.preventDefault();
+      if(!playBtn.disabled) playBtn.click();
+      return;
+    }
+    if(state.mode==='name'&&state.trial&&!state.trial.answered&&e.key.length===1){
+      var pc=pcFromKey(e.key,e.shiftKey);
+      if(pc>=0){ e.preventDefault(); answerName(pc); }
+    }
+  });
+
+  window.addEventListener('resize',function(){ drawBoard(); });
+
+  /* ================= init ================= */
+  function init(){
+    for(var s=0;s<nStrings();s++) state.stringsOn.push(true);
+    fretSlider=dualRange('fretDual',{min:0,max:maxFret(),lo:0,hi:5,step:1,
+      onChange:function(lo,hi){
+        state.fretLo=lo; state.fretHi=hi;
+        el('fretVal').textContent=lo+'\u2013'+hi;
+        drawBoard(); drawHeat(); drawNoteChart();
+        if(!state.trial||state.trial.answered||!inPlay(state.trial.s,state.trial.f)) newTrial();
+      }});
+    buildChips();
+    el('eyebrow').textContent=eyebrowText();
+    setMode('name');
+    renderStats();
+    drawHeat();
+    drawNoteChart();
+  }
+  init();
+  window.__fret={state:state,pool:pool,poolPcs:poolPcs,chanceNow:chanceNow,band:band,
+                geom:geom,newTrial:newTrial,answerName:answerName,
+                setMode:setMode,finishRound:finishRound,nextStep:nextStep,
+                midiAt:midiAt,fullName:fullName,stringNo:stringNo,inPlay:inPlay,
+                openMidis:openMidis,median:median,playMidi:playMidi,renderWav:renderWav,
+                toggleMark:toggleMark,checkFind:checkFind,targetKeys:targetKeys,choose:choose,
+                thudSample:thudSample,clockMs:clockMs,fmtClock:fmtClock,tick:tick,
+                settingsSig:settingsSig,freshRound:freshRound};
+})();
+</script>
+
+<footer class="credit">
+  <a href="https://www.flaticon.com/free-icons/ear" title="ear icons" target="_blank" rel="noopener">Ear icons created by Magnific &mdash; Flaticon</a>
+</footer>
+
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "59e34e23d19244c89a99136d0550973c"}'></script><!-- End Cloudflare Web Analytics -->
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "My Fretboard Trainer",
+  "url": "https://myeartrainer.com/fretboard/",
+  "description": "Learn the notes on a bass or guitar fretboard, in the browser.",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Any",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "isPartOf": { "@type": "WebSite", "name": "My Ear Trainer", "url": "https://myeartrainer.com/" }
+}
+</script>
+</body>
+</html>
