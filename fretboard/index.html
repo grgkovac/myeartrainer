@@ -291,10 +291,16 @@
 
   <div class="chart">
     <div class="chart-head">
-      <span class="chart-title">Accuracy by note name</span>
-      <span class="chart-note" id="noteChartNote">no data yet</span>
+      <span class="chart-title">Time by position</span>
+      <span class="chart-note" id="timeChartNote">no data yet</span>
     </div>
-    <svg id="noteChart" viewBox="0 0 500 130" role="img" aria-label="Accuracy by note name"></svg>
+    <svg id="timeChart" viewBox="0 0 500 160" role="img" aria-label="Answer time by fretboard position"></svg>
+    <div class="board-legend" id="timeLegend">
+      <span><i class="swatch" style="background:var(--correct)"></i>up to 1.25&times; median</span>
+      <span><i class="swatch" style="background:var(--warn)"></i>1.25–1.75&times;</span>
+      <span><i class="swatch" style="background:var(--signal)"></i>over 1.75&times;</span>
+      <span><i class="swatch" style="background:var(--tint-c)"></i>not timed yet</span>
+    </div>
   </div>
 
   <div class="block">
@@ -402,7 +408,7 @@
   }
   function freshTally(){
     return {trials:0,correct:0,streak:0,best:0,times:[],
-            byPos:{},byNote:{},byString:{},last:null,r:freshRound()};
+            byPos:{},posMs:{},byNote:{},byString:{},last:null,r:freshRound()};
   }
 
   // Wall clock for the round, paused while a dialog is open. Median answer time
@@ -969,6 +975,14 @@
     if(!map[key]) map[key]=[0,0];
     map[key][1]++; if(ok) map[key][0]++;
   }
+  // Times are kept per position rather than averaged in, so one distracted
+  // answer cannot drag a square red for the rest of the session — the chart
+  // reads the median of them. Wrong answers count too: the question is where
+  // you hesitate, and accuracy is already the chart above.
+  function bumpMs(map,key,ms){
+    if(!map[key]) map[key]=[];
+    map[key].push(ms);
+  }
 
   function record(ok,posKey,pc,s,ms){
     var d=D();
@@ -976,6 +990,7 @@
     else d.streak=0;
     d.times.push(ms);
     bump(d.byPos,posKey,ok);
+    bumpMs(d.posMs,posKey,ms);
     bump(d.byNote,String(pc),ok);
     bump(d.byString,String(s),ok);
     d.r.trials++; if(ok) d.r.correct++;
@@ -1066,6 +1081,9 @@
     want.forEach(function(k){
       var got=found.indexOf(k)>=0;
       bump(d.byPos,k,got);
+      // the whole trial's time lands on each target; the extras below are
+      // mistakes, not positions being timed, so they are left out
+      bumpMs(d.posMs,k,ms);
       bump(d.byString,k.split(':')[0],got);
       bump(d.r.byString,k.split(':')[0],got);
     });
@@ -1107,7 +1125,7 @@
   function afterAnswer(){
     renderStats();
     drawHeat();
-    drawNoteChart();
+    drawTime();
     progress();
     var d=D();
     if(d.r.trials>=state.roundLen) setTimeout(finishRound,650);
@@ -1169,45 +1187,49 @@
     el('heatNote').textContent=asked?asked+' of '+pool().length+' positions seen':'no data yet';
   }
 
-  function drawNoteChart(){
-    var svg=el('noteChart'), d=D();
-    var opts=options(), W=500, H=130, padL=26, padB=30, padT=14, padR=8;
+  // Slowness is judged against your own median rather than a fixed number of
+  // seconds: what counts as a hesitation depends on the player and on how large
+  // the pool is, and a scale that ignores that would be red for a beginner and
+  // green for everyone else regardless of where their weak spots are.
+  function timeColor(med,ref){
+    if(!med||!ref) return 'var(--tint-c)';
+    var r=med/ref;
+    if(r<=1.25) return 'var(--correct)';
+    if(r<=1.75) return 'var(--warn)';
+    return 'var(--signal)';
+  }
+  // Same neck as the accuracy chart above, so the two read as one picture: a
+  // square that is green there and red here is one you know but have to work
+  // out, which is a different problem from one you simply do not know.
+  function drawTime(){
+    var svg=el('timeChart'), d=D();
+    var G=geom({rowH:18,openW:26,padT:14,padB:20,span:340,padL:20,padR:10});
     clear(svg);
-    svg.setAttribute('viewBox','0 0 '+W+' '+H);
-    var plotW=W-padL-padR, plotH=H-padT-padB;
-    // baseline and the 100% rule
-    svg.appendChild(mk('line',{x1:padL,y1:padT+plotH,x2:W-padR,y2:padT+plotH,
-      stroke:'var(--rule)','stroke-width':1}));
-    svg.appendChild(mk('line',{x1:padL,y1:padT,x2:W-padR,y2:padT,
-      stroke:'var(--rule)','stroke-width':1,'stroke-dasharray':'2 3'}));
-    svg.appendChild(txt(padL-5,padT+4,'100',{fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
-    svg.appendChild(txt(padL-5,padT+plotH+3,'0',{fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
-
-    var ch=chanceNow();
-    if(ch>0&&ch<1){
-      var cy=padT+plotH-ch*plotH;
-      svg.appendChild(mk('line',{x1:padL,y1:cy,x2:W-padR,y2:cy,
-        stroke:'var(--tint-strong)','stroke-width':1,'stroke-dasharray':'4 3'}));
-      svg.appendChild(txt(W-padR,cy-4,'guessing '+Math.round(ch*100)+'%',
-        {fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
+    svg.setAttribute('viewBox','0 0 '+G.width+' '+G.height);
+    var ref=median(d.times), timed=0;
+    for(var s=0;s<G.n;s++){
+      for(var f=0;f<=G.N;f++){
+        var live=inPlay(s,f);
+        var list=d.posMs[s+':'+f];
+        var med=list&&list.length?median(list):0;
+        if(med) timed++;
+        if(!live&&!med) continue;
+        svg.appendChild(mk('rect',{x:G.cellX(f)-Math.max(5,G.cellW(f)-3)/2,
+          y:G.y(s)-G.rowH/2+2,width:Math.max(5,G.cellW(f)-3),height:G.rowH-4,rx:1.5,
+          fill:timeColor(med,ref),opacity:med?(live?0.95:0.6):0.5}));
+      }
     }
-
-    var slot=plotW/opts.length, seen=0;
-    opts.forEach(function(pc,i){
-      var cell=d.byNote[String(pc)], n=cell?cell[1]:0, ok=cell?cell[0]:0;
-      if(n) seen++;
-      var bw=Math.min(26,slot*0.66), x=padL+slot*(i+0.5)-bw/2;
-      var a=n?ok/n:0, h=n?Math.max(1.5,a*plotH):0;
-      svg.appendChild(mk('rect',{x:x,y:padT+plotH-h,width:bw,height:h,rx:1,
-        fill:n?heatColor(ok,n):'var(--tint-c)'}));
-      if(!n)
-        svg.appendChild(mk('rect',{x:x,y:padT+plotH-3,width:bw,height:3,rx:1,fill:'var(--tint-c)'}));
-      svg.appendChild(txt(padL+slot*(i+0.5),H-15,nameOf(pc),
-        {fill:'var(--graphite)','font-family':"'Space Mono',monospace",'font-size':'10','text-anchor':'middle'}));
-      svg.appendChild(txt(padL+slot*(i+0.5),H-4,n?String(n):'\u2013',
-        {fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'8.5','text-anchor':'middle'}));
+    for(var s2=0;s2<G.n;s2++)
+      svg.appendChild(txt(G.padL-6,G.y(s2)+3.5,String(stringNo(s2)),
+        {fill:'var(--muted)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'end'}));
+    [0,3,5,7,9,12,15,17,19,21,24].forEach(function(f){
+      if(f>G.N) return;
+      svg.appendChild(txt(G.cellX(f),G.height-6,String(f),
+        {fill:'var(--fret-num)','font-family':"'Space Mono',monospace",'font-size':'9','text-anchor':'middle'}));
     });
-    el('noteChartNote').textContent=seen?seen+' of '+opts.length+' notes seen':'no data yet';
+    el('timeChartNote').textContent=timed
+      ? timed+' of '+pool().length+' positions timed \u00b7 median '+(ref/1000).toFixed(1)+'s'
+      : 'no data yet';
   }
 
   /* ================= advice and the round summary ================= */
@@ -1524,7 +1546,7 @@
     buildGrid();
     renderStats();
     drawHeat();
-    drawNoteChart();
+    drawTime();
     newTrial();
   }
 
@@ -1549,7 +1571,7 @@
     buildGrid();
     renderStats();
     drawHeat();
-    drawNoteChart();
+    drawTime();
     newTrial();
   }
 
@@ -1665,7 +1687,7 @@
   el('resetBtn').addEventListener('click',function(){
     state.data.name=freshTally();
     state.data.find=freshTally();
-    renderStats(); drawHeat(); drawNoteChart(); progress();
+    renderStats(); drawHeat(); drawTime(); progress();
   });
   setInterval(tick,500);
 
@@ -1706,7 +1728,7 @@
       onChange:function(lo,hi){
         state.fretLo=lo; state.fretHi=hi;
         el('fretVal').textContent=lo+'\u2013'+hi;
-        drawBoard(); drawHeat(); drawNoteChart();
+        drawBoard(); drawHeat(); drawTime();
         if(!state.trial||state.trial.answered||!inPlay(state.trial.s,state.trial.f)) newTrial();
       }});
     buildChips();
@@ -1714,7 +1736,7 @@
     setMode('name');
     renderStats();
     drawHeat();
-    drawNoteChart();
+    drawTime();
   }
   init();
   window.__fret={state:state,pool:pool,poolPcs:poolPcs,chanceNow:chanceNow,band:band,
