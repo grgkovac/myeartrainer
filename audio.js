@@ -31,6 +31,30 @@
     return ctx;
   }
 
+  // Has a context and it is awake. Callers use this to climb back out of the
+  // audio-element fallback: without it one slow resume routes the rest of the
+  // session through <audio> and only a reload undoes it.
+  function isRunning() { return !!ctx && ctx.state === 'running'; }
+
+  // Browsers suspend the context on a backgrounded tab and refuse to resume it
+  // outside a gesture, so the first note after coming back would otherwise be
+  // the one that trips the fallback. Waking it on any interaction means playback
+  // almost never meets a sleeping context in the first place.
+  function installUnlock(doc) {
+    if (!doc || !doc.addEventListener) return;
+    var wake = function () { if (!ctx || ctx.state !== 'running') ensureCtx(); };
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
+      doc.addEventListener(ev, wake, { capture: true, passive: true });
+    });
+    doc.addEventListener('visibilitychange', function () {
+      if (!doc.hidden && ctx && ctx.state === 'suspended') {
+        var p = ctx.resume();
+        if (p && p.then) p.then(null, function () {});
+      }
+    });
+  }
+  installUnlock(root.document);
+
   // [harmonic, amplitude, decay in nepers/sec]. A plucked string's upper
   // partials die away far faster than its fundamental, and that fading
   // brightness is most of what makes it sound like a string and not an organ.
@@ -113,6 +137,7 @@
     settings: settings,
     log: log,
     ensureCtx: ensureCtx,
+    isRunning: isRunning,
     AMPS: AMPS,
     decayOf: decayOf,
     partials: partials,

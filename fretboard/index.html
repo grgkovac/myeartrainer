@@ -350,7 +350,11 @@
   </div>
 
   <p class="note">Nothing is saved between visits. Close the tab and the board starts clean.</p>
-  <audio id="player" preload="auto" style="display:none"></audio>
+  <!-- Kept in the layout rather than display:none — Safari will not output
+       audio from a hidden media element, which made the fallback route show a
+       playing tab and stay silent. Off-screen and inert instead. -->
+  <audio id="player" playsinline preload="auto"
+         style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></audio>
 </main>
 
 <script src="../audio.js"></script>
@@ -610,6 +614,8 @@
   function playMidi(midi,fail){
     if(!state.fx) return;
     var f=freqOf(midi);
+    // the fallback is for a context that will not wake, not a permanent verdict
+    if(state.route==='element'&&A.isRunning()) state.route='webaudio';
     var c=state.route==='element'?null:ensureCtx();
     if(c){
       if(fail) scheduleThud(c,c.currentTime+0.03);
