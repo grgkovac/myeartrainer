@@ -671,6 +671,8 @@
     state.playing=true;
     var totalMs=0; segments.forEach(function(s){ totalMs+=s.dur*1000; });
 
+    // the fallback is for a context that will not wake, not a permanent verdict
+    if(state.route==='element'&&A.isRunning()) state.route='webaudio';
     var c = state.route==='element' ? null : ensureCtx();
     if(c){
       // resume() is async — the context often still reads 'suspended' right
@@ -752,6 +754,7 @@
     if(!state.fx) return;
     var peak=Math.min(0.5,0.42*state.vol);   // sits under the tones
     try{
+      if(state.route==='element'&&A.isRunning()) state.route='webaudio';
       var c = state.route==='element' ? null : ensureCtx();
       if(c){
         scheduleNoise(c.currentTime+0.02, ok?0.10:0.19, peak, ok);
