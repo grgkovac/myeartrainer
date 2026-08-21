@@ -398,6 +398,9 @@
     pool:'nat',                  // 'nat' | 'all'
     labels:'reveal',             // 'off' | 'reveal' | 'always'
     hand:'right',
+    // per mode: a find trial means marking every occurrence of a note, so a
+    // round of the same length takes far longer than naming single positions
+    roundLenBy:{name:20,find:10},
     roundLen:20,
     fx:true, vol:0.5,
     route:'ctx',
@@ -1242,6 +1245,11 @@
   // Judged against the guessing floor, not a flat percentage. Naturals on one
   // string and all twelve across six are not the same test, and scoring 55% on
   // the second is a better night's work than 70% on the first.
+  // Seconds a note: under SPEED_GOOD reads as recall, over SPEED_SLOW as
+  // deriving it from the open string. Deliberately absolute rather than
+  // relative — unlike the heat chart, this is advice about where you should be
+  // getting to, not a picture of where you currently are.
+  var SPEED_GOOD=2.0, SPEED_SLOW=4.0;
   function band(acc,chance){
     if(chance>=0.99) return 'harder';
     var above=(acc-chance)/(1-chance);
@@ -1270,7 +1278,7 @@
     if(off>=0) return 'switch the '+ordString(off)+' string back on';
     if(state.pool==='nat') return 'move to all twelve notes';
     if(state.fretHi<maxFret()) return 'take the window up to fret '+maxFret();
-    return 'work on speed — the median answer time is the thing to push down now';
+    return null;            // nothing left to widen; speed is what remains
   }
   function easeStep(){
     if(state.pool==='all') return 'drop back to naturals only';
@@ -1323,27 +1331,40 @@
     var wN=worst(r.byNote,function(k){ return nameOf(Number(k)); });
     var window_=state.fretLo+'\u2013'+state.fretHi;
 
+    // Time leads. Accuracy saturates early on a neck you half know — you can sit
+    // at 90% for weeks while still counting up from the open string — so the
+    // number that still has somewhere to go is the one worth reading first.
+    var med=d.times.length>=3?median(d.times)/1000:0;
+    var fast=med>0&&med<=SPEED_GOOD, slow=med>SPEED_SLOW;
+    if(med){
+      say='Median <b>'+med.toFixed(1)+'s</b> a note. ';
+      if(slow&&b!=='easier') say+='That is long enough to be counting up from the open string rather than knowing it. ';
+      else if(fast) say+='That is recall rather than working it out. ';
+    }
+
     if(b==='harder'){
-      say='Frets <b>'+window_+'</b> are not costing you much any more. Time to '+
-          '<b>'+nextStep()+'</b>. Somewhere around 70 to 80% is where the learning happens.';
+      var step=nextStep();
+      say+='Frets <b>'+window_+'</b> are not costing you much any more. ';
+      if(step) say+='Time to <b>'+step+'</b>. ';
+      // the whole point of asking for this: once accuracy is there, speed is
+      // the only axis left, and saying so is more use than another percentage
+      if(!fast) say+='Accuracy is there, so <b>speed is the thing to push now</b> — '+
+        'under '+SPEED_GOOD.toFixed(1)+'s a note is the mark.';
+      else if(!step) say+='Neck, notes and speed are all where you want them.';
+      else say+='Somewhere around 70 to 80% is where the learning happens.';
     } else if(b==='hold'){
-      say='This is the right level — stretched but not guessing. Another round on frets '+
+      say+='This is the right level — stretched but not guessing. Another round on frets '+
           '<b>'+window_+'</b> is the useful thing to do.';
     } else if(b==='ease'){
-      say='Hard going on frets <b>'+window_+'</b>, though clearly above the '+
+      say+='Hard going on frets <b>'+window_+'</b>, though clearly above the '+
           Math.round(chance*100)+'% guessing would give you. Staying here is fine; so is easing off.';
     } else {
-      say='At '+Math.round(acc*100)+'% you are near the '+Math.round(chance*100)+
+      say+='At '+Math.round(acc*100)+'% you are near the '+Math.round(chance*100)+
           '% that guessing scores, so there is little to learn from here. Better to <b>'+
           easeStep()+'</b> and build back up.';
     }
     if(wS&&wS.a<0.6) say+=' Your '+wS.label+' is the weak one at '+Math.round(wS.a*100)+'%.';
     if(wN&&wN.a<0.6) say+=' <b>'+wN.label+'</b> is the note that keeps catching you out.';
-    if(d.times.length>=5){
-      var med=median(d.times)/1000;
-      if(med>6&&acc>0.75) say+=' You are getting them right but taking '+med.toFixed(1)+
-        's — that is counting up from the open string. The aim is to know it, not derive it.';
-    }
     var sig=settingsSig();
     if(d.last&&d.last.sig===sig&&d.last.ms>0){
       var diff=(d.last.ms-ms)/1000;
@@ -1558,6 +1579,9 @@
 
   function setMode(m){
     state.mode=m;
+    state.roundLen=state.roundLenBy[m];
+    el('roundLen').value=state.roundLen;
+    el('roundLenVal').textContent=state.roundLen;
     el('tabName').setAttribute('aria-selected',m==='name'?'true':'false');
     el('tabFind').setAttribute('aria-selected',m==='find'?'true':'false');
     if(m==='name'){
@@ -1683,6 +1707,7 @@
 
   el('roundLen').addEventListener('input',function(){
     state.roundLen=Number(this.value);
+    state.roundLenBy[state.mode]=state.roundLen;
     el('roundLenVal').textContent=state.roundLen;
     progress();
   });
